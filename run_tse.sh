@@ -37,6 +37,7 @@ for DATASET in "${DATASETS[@]}"; do
 
     echo "Starting TSE processing for $DATASET..."
     python3 "$TSE_SCRIPT" \
+        --model_name "$MODEL_NAME" \
         --meta_csv_path "$META_CSV_PATH" \
         --output_dir "$OUTPUT_DIR" \
         --utterance_map_csv "$UTTERANCE_MAP_CSV" \

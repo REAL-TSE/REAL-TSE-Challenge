@@ -20,6 +20,7 @@ def parse_arguments():
     parser.add_argument("--meta_csv_path", type=str, required=True, help="Path to the CSV file with metadata")
     parser.add_argument("--output_dir", type=str, required=True, help="Directory to save the TSE result")
     parser.add_argument("--device", type=str, default="cuda", help="Device to run the model (e.g., 'cuda' or 'cpu')")
+    parser.add_argument("--model_name", type=str, default="english", help="Name of the tse model to use ")
     return parser.parse_args()
 
 def process_tse_row(mixture_utterance, enrolment_utterance, utterance_map, model, output_wav_dir):
@@ -51,7 +52,7 @@ def process_tse_row(mixture_utterance, enrolment_utterance, utterance_map, model
 def main():
     args = parse_arguments()
     
-    model = wesep.load_model("english")
+    model = wesep.load_model_local(args.model_name)
     model.set_device(args.device)
 
 
