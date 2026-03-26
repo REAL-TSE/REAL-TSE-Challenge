@@ -11,9 +11,6 @@
   <a href="https://real-tse.github.io/">
     <img src="https://img.shields.io/badge/REAL--T-Page-blue" alt="REAL-T Page">
   </a>
-  <a href="https://huggingface.co/datasets/SLbaba/REAL-T">
-    <img src="https://img.shields.io/badge/Datasets-HuggingFace-yellow" alt="Datasets on Hugging Face">
-  </a>
 </p>
 
 ![Pipeline](./figure/pipeline.svg)
@@ -44,8 +41,6 @@ For more details, refer to our paper: [REAL-T Paper](xxxxxxxxx)
 
 
 ## 2. Installation
-
-Datasets are at [huggingface](https://huggingface.co/datasets/SLbaba/REAL-T).
 
 ### 2.1 Clone the repository
 
@@ -87,11 +82,21 @@ $ export PYTHONPATH=$PWD/wesep/:$PYTHONPATH
 
 ### 2.4 Prepare Dataset and Checkpoints
 
-Evaluation requires the `REAL-T` dataset and the ASR model checkpoint `FireRedASR-AED-L` and `whisper-large-v2` from Hugging Face. The dataset must be prepared in a specific format before running evaluation. To automatically set up everything, run:
+Evaluation requires the `REAL-T` dataset and the ASR model checkpoint `FireRedASR-AED-L` and `whisper-large-v2` from Hugging Face. The dataset is expected to be provided as a Google Drive archive, then downloaded by `pre.sh`.
+
+To prepare everything, run:
 
 ```bash
-bash -i ./pre.sh
+REALT_DATASET_GDRIVE_FILE_ID=<google_drive_file_id> bash -i ./pre.sh
 ```
+
+You can also use a sharing URL instead of a file id:
+
+```bash
+REALT_DATASET_GDRIVE_URL='https://drive.google.com/file/d/.../view?usp=sharing' bash -i ./pre.sh
+```
+
+`pre.sh` downloads the archive, extracts it under `./datasets/REAL-T`, and then rebuilds machine-local `mapping.csv`.
 
 ## 3. Inference and Evaluation
 

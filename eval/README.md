@@ -112,12 +112,10 @@ mkdir -p ./FireRedASR2S/pretrained_models/FireRedVAD
 python -c "from modelscope import snapshot_download; snapshot_download('xukaituo/FireRedVAD', local_dir='./FireRedASR2S/pretrained_models/FireRedVAD')"
 ```
 
-Timing evaluation also requires overlap JSON copied from `REAL-T-Ext-channel-re-seclection`:
+Timing evaluation also requires overlap JSON under `./datasets/REAL-T/json`.
 
-```bash
-mkdir -p ./datasets/REAL-T/json
-cp -r /path/to/REAL-T-Ext-channel-re-seclection/output/REAL-T-datasets/json/* ./datasets/REAL-T/json/
-```
+If your dataset was prepared from the recommended Google Drive archive via `bash -i ./pre.sh`, that directory is already included.
+
 
 ### DNSMOS
 

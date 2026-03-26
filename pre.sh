@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -euo pipefail
+
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/env_setup.sh"
 
 mkdir -p ./FireRedASR/pretrained_models
@@ -10,29 +12,67 @@ python3 ./utils/download_asr_model.py \
   --en_repo_id openai/whisper-large-v2 \
   --en_save_dir ./whisper/pretrained_models
 
-mkdir -p ./datasets
-python3 ./utils/download_REAL-T.py \
---save_dir "./datasets/REAL-T" \
---hub_repo "SLbaba/REAL-T"
+DATASETS_ROOT="./datasets"
+DATASET_ROOT="${DATASETS_ROOT}/REAL-T"
+ARCHIVE_DIR="${DATASETS_ROOT}/archives"
+ARCHIVE_NAME="${REALT_DATASET_ARCHIVE_NAME:-REAL-T-dataset.tar.gz}"
+ARCHIVE_PATH="${ARCHIVE_DIR}/${ARCHIVE_NAME}"
+REBUILD_MAPPING_MODE="${REALT_MAPPING_MODE:-absolute}"
+FORCE_DATASET_DOWNLOAD="${REALT_FORCE_DATASET_DOWNLOAD:-0}"
 
+mkdir -p "$DATASETS_ROOT"
+mkdir -p "$ARCHIVE_DIR"
 
-MIX_DIR="./datasets/REAL-T/mixtures"
-ENROL_DIR="./datasets/REAL-T/enrolment_speakers"
-OUT_CSV="./datasets/REAL-T/mapping.csv"
+have_full_dataset() {
+    [ -d "${DATASET_ROOT}/mixtures" ] && \
+    [ -d "${DATASET_ROOT}/enrolment_speakers" ] && \
+    [ -d "${DATASET_ROOT}/BASE" ] && \
+    [ -d "${DATASET_ROOT}/PRIMARY" ]
+}
 
+download_dataset_from_google_drive() {
+    local archive_source_desc
+    local gdrive_value
 
-echo "utterance,path" > "$OUT_CSV"
+    if [ -n "${REALT_DATASET_GDRIVE_FILE_ID:-}" ]; then
+        gdrive_value="${REALT_DATASET_GDRIVE_FILE_ID}"
+        archive_source_desc="Google Drive file ${REALT_DATASET_GDRIVE_FILE_ID}"
+    elif [ -n "${REALT_DATASET_GDRIVE_URL:-}" ]; then
+        gdrive_value="${REALT_DATASET_GDRIVE_URL}"
+        archive_source_desc="Google Drive URL"
+    else
+        echo "No Google Drive dataset source configured. Set REALT_DATASET_GDRIVE_FILE_ID or REALT_DATASET_GDRIVE_URL." >&2
+        exit 1
+    fi
 
-find "$MIX_DIR" -type f -name "*.wav" | while read -r file; do
-    utt_id=$(basename "$file" .wav)
-    abs_path=$(realpath "$file")
-    echo "$utt_id,$abs_path" >> "$OUT_CSV"
-done
+    python3 ./utils/download_dataset_archive.py \
+      --output "$ARCHIVE_PATH" \
+      --gdrive-file-id "$gdrive_value"
 
-find "$ENROL_DIR" -type f -name "*.wav" | while read -r file; do
-    utt_id=$(basename "$file" .wav)
-    abs_path=$(realpath "$file")
-    echo "$utt_id,$abs_path" >> "$OUT_CSV"
-done
+    echo "Extracting REAL-T dataset from ${archive_source_desc}"
+    rm -rf "$DATASET_ROOT"
+    case "$ARCHIVE_PATH" in
+        *.tar.gz|*.tgz)
+            tar -xzf "$ARCHIVE_PATH" -C "$DATASETS_ROOT"
+            ;;
+        *.zip)
+            unzip -o "$ARCHIVE_PATH" -d "$DATASETS_ROOT"
+            ;;
+        *)
+            echo "Unsupported dataset archive format: $ARCHIVE_PATH" >&2
+            exit 1
+            ;;
+    esac
+}
 
-echo "mapping.csv generated at $(realpath $OUT_CSV)"
+if [ "$FORCE_DATASET_DOWNLOAD" = "1" ] || ! have_full_dataset; then
+    download_dataset_from_google_drive
+else
+    echo "Existing REAL-T dataset detected under $DATASET_ROOT. Skipping dataset download."
+fi
+
+python3 ./utils/regen_realt_dataset_mappings.py \
+  --dataset-root "$DATASET_ROOT" \
+  --mapping-mode "$REBUILD_MAPPING_MODE"
+
+echo "mapping.csv generated at $(realpath "${DATASET_ROOT}/mapping.csv")"
