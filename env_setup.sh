@@ -39,7 +39,7 @@ if [ -d "${REAL_T_ROOT}/FireRedASR/fireredasr" ]; then
     export PATH="${REAL_T_ROOT}/FireRedASR/fireredasr:${REAL_T_ROOT}/FireRedASR/fireredasr/utils${PATH:+:$PATH}"
 fi
 
-for local_repo in "${REAL_T_ROOT}/FireRedASR" "${REAL_T_ROOT}/FireRedASR2S" "${REAL_T_ROOT}/wesep"; do
+for local_repo in "${REAL_T_ROOT}/FireRedASR" "${REAL_T_ROOT}/FireRedASR2S" "${REAL_T_ROOT}/wesep_real_tse"; do
     if [ -d "${local_repo}" ]; then
         export PYTHONPATH="${local_repo}${PYTHONPATH:+:$PYTHONPATH}"
     fi
