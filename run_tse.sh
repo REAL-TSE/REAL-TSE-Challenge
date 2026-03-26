@@ -2,9 +2,9 @@
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/env_setup.sh"
 
-# Rename your model
-# MODEL_NAME="bsrnn_hr_vox1"
-MODEL_NAME="bsrnn_vox1"     # bsrnn pretrained on VoxCeleb1
+
+MODEL_NAME=${1:-"tfmap_context_100"}    # bsrnn pretrained on VoxCeleb1
+MODEL_DIR="./pretrained"          # Directory containing the model checkpoint
 
 # Dataset names
 DATASETS=("AliMeeting" "AMI" "CHiME6" "AISHELL-4" "DipCo")
@@ -37,7 +37,7 @@ for DATASET in "${DATASETS[@]}"; do
 
     echo "Starting TSE processing for $DATASET..."
     python3 "$TSE_SCRIPT" \
-        --model_name "$MODEL_NAME" \
+        --model_name "$MODEL_DIR/$MODEL_NAME" \
         --meta_csv_path "$META_CSV_PATH" \
         --output_dir "$OUTPUT_DIR" \
         --utterance_map_csv "$UTTERANCE_MAP_CSV" \
