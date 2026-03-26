@@ -4,3 +4,6 @@
 [submodule "FireRedASR2S"]
 	path = FireRedASR2S
 	url = https://github.com/FireRedTeam/FireRedASR2S.git
+[submodule "wesep_real_tse"]
+	path = wesep_real_tse
+	url = git@github.com:REAL-TSE/wesep-real-tse.git
