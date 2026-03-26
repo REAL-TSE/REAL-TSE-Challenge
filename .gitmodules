@@ -1,0 +1,6 @@
+[submodule "wesep"]
+	path = wesep
+	url = https://github.com/wenet-e2e/wesep.git
+[submodule "FireRedASR2S"]
+	path = FireRedASR2S
+	url = https://github.com/FireRedTeam/FireRedASR2S.git

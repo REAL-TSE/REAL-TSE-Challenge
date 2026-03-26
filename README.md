@@ -1,0 +1,231 @@
+# REAL-T: Real Conversational Mixtures for Target Speaker Extraction
+
+<p align="center">
+  <img src="./figure/logo.drawio.svg" alt="REAL-T Logo" width="200"/>
+</p>
+
+<p align="center">
+  <a href="xxxxxxxx">
+    <img src="https://img.shields.io/badge/Paper-ArXiv-red" alt="Paper">
+  </a>
+  <a href="https://real-tse.github.io/">
+    <img src="https://img.shields.io/badge/REAL--T-Page-blue" alt="REAL-T Page">
+  </a>
+  <a href="https://huggingface.co/datasets/SLbaba/REAL-T">
+    <img src="https://img.shields.io/badge/Datasets-HuggingFace-yellow" alt="Datasets on Hugging Face">
+  </a>
+</p>
+
+![Pipeline](./figure/pipeline.svg)
+
+
+## 1. Introduction
+
+Target Speaker Extraction (TSE) models have demonstrated impressive performance on synthetic datasets such as **LibriMix** and **WSJMix**. However, these benchmarks lack the acoustic realism and conversational dynamics of actual human interactions — such as spontaneous speech, overlapping turns, and environmental noise — limiting their relevance to real-world scenarios.
+
+Efforts like **REAL-M** and **LibriCSS** have attempted to bridge this gap. REAL-M collects simultaneous speech in shared environments through multi-speaker read-aloud sessions, while LibriCSS re-records isolated utterances via synchronized playback. Though valuable, these datasets still fall short of capturing the nuances of real conversations — including irregular speaker turns, sporadic utterances, and authentic background conditions.
+
+To address these limitations, we introduce **REAL-T**, the first conversation-centric dataset specifically designed for TSE under real-world conditions. Built from speaker diarization corpora, REAL-T naturally includes overlapping speech, enrollment-ready segments, and complex conversational behaviors.
+
+Key features of REAL-T include:
+
+- **Multi-lingual**: English and Mandarin recordings
+- **Multi-genre**: Covering diverse conversational scenarios
+- **Multi-enrollment**: Multiple enrollment utterance from different parts of the conversation
+
+To support controlled evaluation, we define two test sets:
+
+- **BASE**: A filtered, balanced subset for initial testing
+- **PRIMARY**: A more realistic and challenging benchmark
+
+Evaluations reveal that existing TSE models suffer significant performance degradation on REAL-T, highlighting the need for more robust approaches tailored to real conversational speech.
+
+For more details, refer to our paper: [REAL-T Paper](xxxxxxxxx)
+
+
+## 2. Installation
+
+Datasets are at [huggingface](https://huggingface.co/datasets/SLbaba/REAL-T).
+
+### 2.1 Clone the repository
+
+```bash
+git clone https://github.com/REAL-TSE/REAL-T.git
+cd REAL-T
+
+# install submodules (wesep + FireRedASR2S)
+git submodule update --init --recursive
+```
+
+### 2.2 Create a Conda environment and install dependencies
+
+```bash
+conda create -n REAL-T python=3.10
+conda activate REAL-T
+pip install -r requirements.txt
+# Reinstall GPU ORT last so silero-vad / wespeakerruntime do not leave CPU ORT active.
+pip install --force-reinstall --no-deps onnxruntime-gpu==1.19.2
+```
+
+`requirements.txt` is the only supported Python dependency entrypoint for this repo. For RTX 5090 / `sm_120`, it resolves the `cu128` PyTorch wheels automatically. `wespeaker` remains the only GitHub dependency because local `wesep` imports it directly.
+
+All top-level scripts source `env_setup.sh` by default. That helper activates `REAL-T` and appends the local `FireRedASR` / `FireRedASR2S` / `wesep` paths automatically. If you want to use a different env name temporarily, run them with `REALT_CONDA_ENV=<your_env_name>`.
+
+### 2.3 Set up Linux PATH and PYTHONPATH
+
+> Please replace `$PWD` below with the absolute path to this project (REAL-T repo root).
+
+FireRedASR (ASR transcription) and **FireRedASR2S** (e.g. FireRedVAD) are expected under the REAL-T repo root. Initialize/update the submodules first, then add the repo roots to `PYTHONPATH` so that `import fireredasr` / `import fireredasr2s` work.
+
+```
+$ export PATH=$PWD/FireRedASR/fireredasr/:$PWD/FireRedASR/fireredasr/utils/:$PATH
+$ export PYTHONPATH=$PWD/FireRedASR/:$PYTHONPATH
+$ export PYTHONPATH=$PWD/FireRedASR2S/:$PYTHONPATH
+$ export PYTHONPATH=$PWD/wesep/:$PYTHONPATH
+```
+
+
+### 2.4 Prepare Dataset and Checkpoints
+
+Evaluation requires the `REAL-T` dataset and the ASR model checkpoint `FireRedASR-AED-L` and `whisper-large-v2` from Hugging Face. The dataset must be prepared in a specific format before running evaluation. To automatically set up everything, run:
+
+```bash
+bash -i ./pre.sh
+```
+
+## 3. Inference and Evaluation
+
+### 3.1 TSE Inference on REAL-T
+
+The `run_tse.sh` script below demonstrates how to perform TSE inference with the [Wesep toolkit](https://github.com/wenet-e2e/wesep) using a **BSRNN model** trained on **VoxCeleb1**. You can adapt its `input/output` structure to suit your own TSE model.
+
+```bash
+cd REAL-T
+bash -i run_tse.sh
+```
+
+This script runs TSE inference for multiple datasets using a specified model. Each dataset will be processed individually, generating separated target speaker audio files.
+
+| **Variable Name** | **Description** |
+| :--- | :--- |
+| `MODEL_NAME 🚩` | Name of the TSE model used for inference (e.g., `bsrnn_vox1`). |
+| `DATASETS 🚩` | List of datasets to process (e.g., AliMeeting, AMI, CHiME6, AISHELL-4, DipCo). Fisher can also be included if needed. |
+| `TEST_SET 🚩` | Test subset to use: `PRIMARY` or `BASE`. |
+| `DEVICE 🚩` | Device on which to run inference (`cuda` for GPU, `cpu` for CPU). |
+| `BASE_META_PATH` | Base directory containing metadata CSV files for each dataset. |
+| `BASE_OUTPUT_DIR` | Directory where the separated audios will be saved. |
+| `TSE_SCRIPT` | Path to the TSE inference Python script (`tse.py`). |
+| `META_CSV_PATH` | Path to the CSV file containing mixture and enrolment utterance metadata. |
+| `UTTERANCE_MAP_CSV` | Path to the CSV mapping enrolment utterances to mixture utterances. |
+| `OUTPUT_DIR` | Directory where output audios for each dataset will be stored. |
+
+---
+
+### 3.2 One-Click Evaluation
+
+The recommended evaluation entrypoint is now `run_eval.sh` at the repo root. It runs the full evaluation pipeline sequentially on one `BASE_DIR`, using one CUDA device for all stages.
+
+```bash
+cd REAL-T
+bash ./run_eval.sh --base-dir ./output/PRIMARY/BSRNN --test-set PRIMARY --cuda 0
+```
+
+`run_eval.sh` supports three common usages:
+
+```bash
+# 1 2: run all evaluation sub-scripts, then summarize
+bash ./run_eval.sh --base-dir ./output/PRIMARY/BSRNN --test-set PRIMARY --cuda 0 1 2
+
+# 1: only run all evaluation sub-scripts
+bash ./run_eval.sh --base-dir ./output/PRIMARY/BSRNN --test-set PRIMARY --cuda 0 1
+
+# 2: only summarize existing CSV results
+bash ./run_eval.sh --base-dir ./output/PRIMARY/BSRNN --test-set PRIMARY --cuda 0 2
+```
+
+If no mode is provided, the default is `1 2`.
+
+By default, `run_eval.sh` runs:
+
+1. `TER`
+2. `TER_ASR2_AED`
+3. `TSE timing`
+4. `speaker similarity (tse_enrol)`
+5. `speaker similarity (mixture_enrol)`
+6. `DNSMOS`
+
+Optional Fisher support:
+
+```bash
+bash ./run_eval.sh --base-dir ./output/PRIMARY/BSRNN --test-set PRIMARY --cuda 0 --include-fisher
+```
+
+Expected summary outputs under the chosen `BASE_DIR`:
+
+- `{BASE_NAME}_TER.csv` and `{BASE_NAME}_TER.txt`
+- `{BASE_NAME}_TER_ASR2_AED.csv` and `{BASE_NAME}_TER_ASR2_AED.txt`
+- `{BASE_NAME}_TSE_TIMING.csv` and `{BASE_NAME}_TSE_TIMING.txt`
+- `{BASE_NAME}_spk_similarity.csv` and `{BASE_NAME}_spk_similarity_summary.txt`
+- `{BASE_NAME}_spk_similarity_mixture_enrol.csv` and `{BASE_NAME}_spk_similarity_mixture_enrol_summary.txt`
+- `{BASE_NAME}_dnsmos.csv` and `{BASE_NAME}_dnsmos.txt`
+- `{BASE_NAME}_summary.txt`
+
+`{BASE_NAME}_summary.txt` is a compact aggregated report recomputed from the CSV files above. It contains:
+
+- `Mean by dataset`
+- `Mean by language`
+
+with grouped columns:
+
+- `TER`: `fireredasr-1/whisper`, `fireredasr-2`
+- `SIM`: `enrol-mixture`, `enrol-tse`
+- `DNSMOS`: `SIG`, `BAK`, `OVRL`, `P808`
+- `RATIO`: `precision`, `recall`, `f1`
+
+At the moment, `RATIO` is fully sourced from `{BASE_NAME}_TSE_TIMING.csv`, using the mean `precision`, `recall`, and `f1`.
+
+Detailed per-metric instructions, prerequisites, and optional visualization are now documented in [`eval/README.md`](./eval/README.md).
+
+### 3.3 TSE Inference vs Eval
+
+- Use `run_tse.sh` for TSE inference.
+- Use `run_eval.sh` for the full evaluation pipeline.
+- Use scripts under `./eval/` only when you want to run individual evaluation sub-steps manually.
+
+## 4. Results
+
+The table below compares the performance of several recently proposed TSE models on the simulated Libri2Mix and PRIMARY test sets. 
+
+<div align="center">
+
+| Model       | Training Data     | Libri2Mix SI-SDR (dB) | PRIMARY zh (%) | PRIMARY en (%) |
+|:-------------:|:-------------------:|:------------------------:|:----------------:|:----------------:|
+| TSELM-L     | Libri2Mix-360     | /                      | 331.73         | 192.39         |
+| USEF-TFGridnet | Libri2Mix-100  | **18.05**              | 67.98          | 87.27          |
+| **BSRNN**   | Libri2Mix-100     | 12.95                  | 81.74          | 91.20          |
+|             | Libri2Mix-360     | 16.57                  | 69.80          | 73.61          |
+|             | VoxCeleb1         | 16.50                  | **57.61**      | 69.63          |
+| **BSRNN_HR**| Libri2Mix-100     | 15.91                  | 70.03          | 78.96          |
+|             | Libri2Mix-360     | 17.99                  | 63.38          | 74.64          |
+|             | VoxCeleb1         | 16.38                  | 58.77          | **66.46**      |
+
+</div>
+
+## 5. Citation
+
+```
+@inproceedings{li25da_interspeech,
+  title     = {{REAL-T: Real Conversational Mixtures for Target Speaker Extraction}},
+  author    = {{Shaole Li and Shuai Wang and Jiangyu Han and Ke Zhang and Wupeng Wang and Haizhou Li}},
+  year      = {{2025}},
+  booktitle = {{Interspeech 2025}},
+  pages     = {{1923--1927}},
+  doi       = {{10.21437/Interspeech.2025-2662}},
+  issn      = {{2958-1796}},
+}
+```
+
+
+## 6. Contact
+
+For any questions, please contact: `shuaiwang@nju.edu.cn`
