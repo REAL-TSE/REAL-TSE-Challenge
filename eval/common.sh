@@ -11,8 +11,15 @@ init_eval_common() {
     TEST_SET_DIR="${TEST_SET_DIR:-./datasets/REAL-T/PRIMARY}"
     INCLUDING_FISHER="${INCLUDING_FISHER:-False}"
     MAPPING_CSV_NAME="${MAPPING_CSV_NAME:-tse_audio_mapping.csv}"
+    EVAL_METRICS_SUBDIR="${EVAL_METRICS_SUBDIR:-eval_metrics}"
     USE_GPU="${USE_GPU:-1}"
     DATASETS="${DATASETS:-AliMeeting AISHELL-4 AMI DipCo CHiME6 Fisher}"
+
+    EVAL_METRICS_SUBDIR="${EVAL_METRICS_SUBDIR#/}"
+    EVAL_METRICS_SUBDIR="${EVAL_METRICS_SUBDIR%/}"
+    if [ "$EVAL_METRICS_SUBDIR" = "." ]; then
+        EVAL_METRICS_SUBDIR=""
+    fi
 
     if [ -z "${BASE_DIRS:-}" ]; then
         BASE_DIRS="${default_base_dirs}"
@@ -52,4 +59,13 @@ dataset_enabled() {
 list_dataset_dirs() {
     local base_dir="$1"
     find -L "$base_dir" -maxdepth 1 -mindepth 1 -type d | sort
+}
+
+eval_metrics_dir() {
+    local base_dir="$1"
+    if [ -z "${EVAL_METRICS_SUBDIR:-}" ]; then
+        echo "$base_dir"
+        return
+    fi
+    echo "${base_dir}/${EVAL_METRICS_SUBDIR}"
 }

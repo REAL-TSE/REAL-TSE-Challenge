@@ -99,6 +99,7 @@ export USE_GPU=1
 export ASR_DEVICE="cuda:0"
 export WESPEAKER_PROVIDER="cuda"
 export DNSMOS_PROVIDER="cuda"
+export EVAL_METRICS_SUBDIR="${EVAL_METRICS_SUBDIR:-eval_metrics}"
 
 run_stage() {
     local label="$1"
@@ -114,6 +115,7 @@ run_pipeline() {
     echo "  test_set : $TEST_SET"
     echo "  cuda     : $CUDA_VISIBLE_DEVICES"
     echo "  fisher   : $INCLUDING_FISHER"
+    echo "  metrics  : ${EVAL_METRICS_SUBDIR:-.}"
 
     run_stage "TER" bash "${REAL_T_ROOT}/eval/transcribe_and_evaluation.sh" 1 2
     run_stage "TSE_TIMING" bash "${REAL_T_ROOT}/eval/vad_and_evaluation.sh" 1 2
@@ -129,7 +131,8 @@ run_summary() {
     echo
     echo "===== AGGREGATED SUMMARY ====="
     python3 "${REAL_T_ROOT}/utils/aggregate_eval_summary.py" \
-        --base_dir "$BASE_DIR"
+        --base_dir "$BASE_DIR" \
+        --metrics_subdir "${EVAL_METRICS_SUBDIR:-}"
     echo "Aggregated summary completed successfully."
 }
 

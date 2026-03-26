@@ -84,14 +84,16 @@ run_asr_evaluation() {
     for BASE_DIR in "${BASE_DIR_LIST[@]}"; do
         echo "Running TER evaluation for base directory: $BASE_DIR"
         BASE_NAME="$(basename "$BASE_DIR")"
+        METRICS_DIR="$(eval_metrics_dir "$BASE_DIR")"
+        mkdir -p "$METRICS_DIR"
         if [ "$INCLUDING_FISHER" = "True" ]; then
             SUFFIX="_including_fisher"
         else
             SUFFIX=""
         fi
 
-        RESULT_TXT="${BASE_DIR}/${BASE_NAME}_TER${SUFFIX}.txt"
-        RESULT_CSV="${BASE_DIR}/${BASE_NAME}_TER${SUFFIX}.csv"
+        RESULT_TXT="${METRICS_DIR}/${BASE_NAME}_TER${SUFFIX}.txt"
+        RESULT_CSV="${METRICS_DIR}/${BASE_NAME}_TER${SUFFIX}.csv"
 
         CMD=(
             env

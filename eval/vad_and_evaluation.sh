@@ -79,8 +79,10 @@ run_timing_evaluation() {
     for BASE_DIR in "${BASE_DIR_LIST[@]}"; do
         echo "Running timing evaluation for base directory: $BASE_DIR"
         BASE_NAME="$(basename "$BASE_DIR")"
-        RESULT_CSV="${BASE_DIR}/${BASE_NAME}_TSE_TIMING.csv"
-        RESULT_TXT="${BASE_DIR}/${BASE_NAME}_TSE_TIMING.txt"
+        METRICS_DIR="$(eval_metrics_dir "$BASE_DIR")"
+        mkdir -p "$METRICS_DIR"
+        RESULT_CSV="${METRICS_DIR}/${BASE_NAME}_TSE_TIMING.csv"
+        RESULT_TXT="${METRICS_DIR}/${BASE_NAME}_TSE_TIMING.txt"
 
         python3 "$PREPARE_LABEL_SCRIPT" \
             --ground_truth_dir "$TEST_SET_DIR" \
@@ -127,7 +129,12 @@ run_visualization() {
             vad_jsonl="${vad_dir}/${VAD_JSONL_NAME}"
             output_dir="${vad_dir}/figures"
             BASE_NAME="$(basename "$BASE_DIR")"
-            METRICS_CSV="${BASE_DIR}/${BASE_NAME}_TSE_TIMING.csv"
+            METRICS_DIR="$(eval_metrics_dir "$BASE_DIR")"
+            METRICS_CSV="${METRICS_DIR}/${BASE_NAME}_TSE_TIMING.csv"
+            LEGACY_METRICS_CSV="${BASE_DIR}/${BASE_NAME}_TSE_TIMING.csv"
+            if [ ! -f "$METRICS_CSV" ] && [ -f "$LEGACY_METRICS_CSV" ]; then
+                METRICS_CSV="$LEGACY_METRICS_CSV"
+            fi
 
             if [ ! -f "$label_jsonl" ]; then
                 echo "Skipping $dataset: missing label segments ($label_jsonl)"

@@ -26,6 +26,27 @@ if [ ${#MODES[@]} -eq 0 ]; then
     exit 1
 fi
 
+spk_output_names() {
+    local base_name="$1"
+    local pair_mode="$2"
+
+    local csv_name=""
+    local txt_name=""
+    if [ "$pair_mode" = "tse_enrol" ]; then
+        csv_name="${base_name}_spk_similarity.csv"
+        txt_name="${base_name}_spk_similarity_summary.txt"
+    else
+        csv_name="${base_name}_spk_similarity_${pair_mode}.csv"
+        txt_name="${base_name}_spk_similarity_${pair_mode}_summary.txt"
+    fi
+
+    if [ -n "${EVAL_METRICS_SUBDIR:-}" ]; then
+        csv_name="${EVAL_METRICS_SUBDIR}/${csv_name}"
+        txt_name="${EVAL_METRICS_SUBDIR}/${txt_name}"
+    fi
+    echo "${csv_name}|${txt_name}"
+}
+
 run_spk_sim_full() {
     python3 - <<'PY'
 import importlib.util
@@ -41,6 +62,11 @@ PY
             continue
         fi
 
+        BASE_NAME="$(basename "$BASE_DIR")"
+        OUTPUT_NAMES="$(spk_output_names "$BASE_NAME" "$SPK_SIM_PAIR_MODE")"
+        OUTPUT_CSV_NAME="${OUTPUT_NAMES%%|*}"
+        OUTPUT_TXT_NAME="${OUTPUT_NAMES##*|}"
+
         CMD=(
             python3 "${REAL_T_ROOT}/utils/spk_similarity_eval.py"
             --base_dir "$BASE_DIR"
@@ -51,6 +77,8 @@ PY
             --dataset_lang_overrides "$WESPEAKER_DATASET_LANG_OVERRIDES"
             --num_workers "$NUM_WORKERS"
             --pair_mode "$SPK_SIM_PAIR_MODE"
+            --output_csv_name "$OUTPUT_CSV_NAME"
+            --output_txt_name "$OUTPUT_TXT_NAME"
             --csv_only
         )
         if [ -n "$MAX_SAMPLES" ]; then
@@ -69,12 +97,19 @@ run_spk_sim_regen_txt() {
             continue
         fi
 
+        BASE_NAME="$(basename "$BASE_DIR")"
+        OUTPUT_NAMES="$(spk_output_names "$BASE_NAME" "$SPK_SIM_PAIR_MODE")"
+        OUTPUT_CSV_NAME="${OUTPUT_NAMES%%|*}"
+        OUTPUT_TXT_NAME="${OUTPUT_NAMES##*|}"
+
         python3 "${REAL_T_ROOT}/utils/spk_similarity_eval.py" \
             --base_dir "$BASE_DIR" \
             --wespeaker_lang "$WESPEAKER_LANG" \
             --dataset_lang_overrides "$WESPEAKER_DATASET_LANG_OVERRIDES" \
             --num_workers "$NUM_WORKERS" \
             --pair_mode "$SPK_SIM_PAIR_MODE" \
+            --output_csv_name "$OUTPUT_CSV_NAME" \
+            --output_txt_name "$OUTPUT_TXT_NAME" \
             --regen_txt_only
     done
 }

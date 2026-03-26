@@ -28,6 +28,14 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Output TXT filename under each base_dir. Default: <base_name>_summary.txt.",
     )
+    parser.add_argument(
+        "--metrics_subdir",
+        default="eval_metrics",
+        help=(
+            "Subdirectory under each base_dir that stores metric CSVs. "
+            "Default: eval_metrics. Falls back to legacy flat paths when files are missing."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -116,10 +124,22 @@ def ordered_names(names: Iterable[str], preferred: Sequence[str]) -> List[str]:
     return ordered
 
 
-def require_file(path: Path) -> Path:
-    if not path.is_file():
-        raise FileNotFoundError(f"Required CSV not found: {path}")
-    return path
+def resolve_metric_csv(base_dir: Path, metrics_subdir: str, filename: str) -> Path:
+    candidates: List[Path] = []
+    subdir = metrics_subdir.strip().strip("/")
+    if subdir and subdir != ".":
+        candidates.append(base_dir / subdir / filename)
+    candidates.append(base_dir / filename)
+
+    for path in candidates:
+        if path.is_file():
+            return path
+
+    raise FileNotFoundError(
+        "Required CSV not found. Tried: {}".format(
+            ", ".join(str(path) for path in candidates)
+        )
+    )
 
 
 def mean_by_group(
@@ -202,15 +222,21 @@ def attach_language(
     return data
 
 
-def summarize_one_base_dir(base_dir: Path, output_txt_name: str | None) -> Path:
+def summarize_one_base_dir(
+    base_dir: Path,
+    output_txt_name: str | None,
+    metrics_subdir: str,
+) -> Path:
     base_name = base_dir.name
     output_txt = base_dir / (output_txt_name or f"{base_name}_summary.txt")
 
-    ter_path = require_file(base_dir / f"{base_name}_TER.csv")
-    sim_path = require_file(base_dir / f"{base_name}_spk_similarity.csv")
-    sim_baseline_path = require_file(base_dir / f"{base_name}_spk_similarity_mixture_enrol.csv")
-    dnsmos_path = require_file(base_dir / f"{base_name}_dnsmos.csv")
-    timing_path = require_file(base_dir / f"{base_name}_TSE_TIMING.csv")
+    ter_path = resolve_metric_csv(base_dir, metrics_subdir, f"{base_name}_TER.csv")
+    sim_path = resolve_metric_csv(base_dir, metrics_subdir, f"{base_name}_spk_similarity.csv")
+    sim_baseline_path = resolve_metric_csv(
+        base_dir, metrics_subdir, f"{base_name}_spk_similarity_mixture_enrol.csv"
+    )
+    dnsmos_path = resolve_metric_csv(base_dir, metrics_subdir, f"{base_name}_dnsmos.csv")
+    timing_path = resolve_metric_csv(base_dir, metrics_subdir, f"{base_name}_TSE_TIMING.csv")
 
     ter_df = pd.read_csv(ter_path)
     sim_df = pd.read_csv(sim_path)
@@ -393,7 +419,11 @@ def main() -> None:
         base_dir = Path(base_dir_raw).resolve()
         if not base_dir.is_dir():
             raise SystemExit(f"Base directory not found: {base_dir}")
-        output_txt = summarize_one_base_dir(base_dir, args.output_txt_name)
+        output_txt = summarize_one_base_dir(
+            base_dir=base_dir,
+            output_txt_name=args.output_txt_name,
+            metrics_subdir=args.metrics_subdir,
+        )
         print(f"[Saved] {output_txt}")
 
 

@@ -181,16 +181,18 @@ Optional Fisher support:
 bash ./run_eval.sh --base-dir ./output/PRIMARY/BSRNN --test-set PRIMARY --cuda 0 --include-fisher
 ```
 
-Expected summary outputs under the chosen `BASE_DIR`:
+Expected outputs under the chosen `BASE_DIR`:
 
-- `{BASE_NAME}_TER.csv` and `{BASE_NAME}_TER.txt`
-- `{BASE_NAME}_TSE_TIMING.csv` and `{BASE_NAME}_TSE_TIMING.txt`
-- `{BASE_NAME}_spk_similarity.csv` and `{BASE_NAME}_spk_similarity_summary.txt`
-- `{BASE_NAME}_spk_similarity_mixture_enrol.csv` and `{BASE_NAME}_spk_similarity_mixture_enrol_summary.txt`
-- `{BASE_NAME}_dnsmos.csv` and `{BASE_NAME}_dnsmos.txt`
-- `{BASE_NAME}_summary.txt`
+- Detailed metric files under `eval_metrics/` (configurable via `EVAL_METRICS_SUBDIR`):
+  - `eval_metrics/{BASE_NAME}_TER.csv` and `eval_metrics/{BASE_NAME}_TER.txt`
+  - `eval_metrics/{BASE_NAME}_TSE_TIMING.csv` and `eval_metrics/{BASE_NAME}_TSE_TIMING.txt`
+  - `eval_metrics/{BASE_NAME}_spk_similarity.csv` and `eval_metrics/{BASE_NAME}_spk_similarity_summary.txt`
+  - `eval_metrics/{BASE_NAME}_spk_similarity_mixture_enrol.csv` and `eval_metrics/{BASE_NAME}_spk_similarity_mixture_enrol_summary.txt`
+  - `eval_metrics/{BASE_NAME}_dnsmos.csv` and `eval_metrics/{BASE_NAME}_dnsmos.txt`
+- Aggregated report at the base directory root:
+  - `{BASE_NAME}_summary.txt`
 
-`{BASE_NAME}_summary.txt` is a compact aggregated report recomputed from the CSV files above. It contains:
+`{BASE_NAME}_summary.txt` is a compact aggregated report recomputed from the metric CSV files above. It contains:
 
 - `Mean by dataset`
 - `Mean by language`
@@ -202,7 +204,7 @@ with grouped columns:
 - `DNSMOS`: `SIG`, `BAK`, `OVRL`, `P808`
 - `RATIO`: `precision`, `recall`, `f1`
 
-At the moment, `RATIO` is fully sourced from `{BASE_NAME}_TSE_TIMING.csv`, using the mean `precision`, `recall`, and `f1`.
+At the moment, `RATIO` is fully sourced from `eval_metrics/{BASE_NAME}_TSE_TIMING.csv`, using the mean `precision`, `recall`, and `f1`.
 
 Detailed per-metric instructions, prerequisites, and optional visualization are now documented in [`eval/README.md`](./eval/README.md).
 

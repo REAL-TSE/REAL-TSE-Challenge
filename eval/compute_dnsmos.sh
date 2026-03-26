@@ -18,6 +18,17 @@ if [ ${#MODES[@]} -eq 0 ]; then
     exit 1
 fi
 
+dnsmos_output_names() {
+    local base_name="$1"
+    local csv_name="${base_name}_dnsmos.csv"
+    local txt_name="${base_name}_dnsmos.txt"
+    if [ -n "${EVAL_METRICS_SUBDIR:-}" ]; then
+        csv_name="${EVAL_METRICS_SUBDIR}/${csv_name}"
+        txt_name="${EVAL_METRICS_SUBDIR}/${txt_name}"
+    fi
+    echo "${csv_name}|${txt_name}"
+}
+
 run_dnsmos_full() {
     for BASE_DIR in "${BASE_DIR_LIST[@]}"; do
         if [ ! -d "$BASE_DIR" ]; then
@@ -25,12 +36,19 @@ run_dnsmos_full() {
             continue
         fi
 
+        BASE_NAME="$(basename "$BASE_DIR")"
+        OUTPUT_NAMES="$(dnsmos_output_names "$BASE_NAME")"
+        OUTPUT_CSV_NAME="${OUTPUT_NAMES%%|*}"
+        OUTPUT_TXT_NAME="${OUTPUT_NAMES##*|}"
+
         CMD=(
             python3 "${REAL_T_ROOT}/utils/dnsmos_eval.py"
             --base_dir "$BASE_DIR"
             --test_set_dir "$TEST_SET_DIR"
             --dnsmos_model_dir "$DNSMOS_MODEL_DIR"
             --provider "$DNSMOS_PROVIDER"
+            --output_csv_name "$OUTPUT_CSV_NAME"
+            --output_txt_name "$OUTPUT_TXT_NAME"
             --csv_only
         )
         if [ "$DNSMOS_NO_DOWNLOAD" = "1" ]; then
@@ -52,9 +70,16 @@ run_dnsmos_regen_txt() {
             continue
         fi
 
+        BASE_NAME="$(basename "$BASE_DIR")"
+        OUTPUT_NAMES="$(dnsmos_output_names "$BASE_NAME")"
+        OUTPUT_CSV_NAME="${OUTPUT_NAMES%%|*}"
+        OUTPUT_TXT_NAME="${OUTPUT_NAMES##*|}"
+
         python3 "${REAL_T_ROOT}/utils/dnsmos_eval.py" \
             --base_dir "$BASE_DIR" \
             --dnsmos_model_dir "$DNSMOS_MODEL_DIR" \
+            --output_csv_name "$OUTPUT_CSV_NAME" \
+            --output_txt_name "$OUTPUT_TXT_NAME" \
             --regen_txt_only
     done
 }

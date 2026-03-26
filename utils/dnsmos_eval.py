@@ -305,6 +305,23 @@ def default_output_names(base_name: str) -> Tuple[str, str]:
     return f"{base_name}_dnsmos.csv", f"{base_name}_dnsmos.txt"
 
 
+def resolve_existing_csv_path(
+    base_dir: Path,
+    csv_name: str,
+    legacy_csv_name: str,
+) -> Path:
+    primary = base_dir / csv_name
+    candidates = [primary]
+    if "/" in csv_name or "\\" in csv_name:
+        legacy = base_dir / legacy_csv_name
+        if legacy not in candidates:
+            candidates.append(legacy)
+    for path in candidates:
+        if path.exists():
+            return path
+    return primary
+
+
 def parse_dataset_lang_overrides(raw: str) -> Dict[str, str]:
     overrides: Dict[str, str] = {}
     if not raw or not raw.strip():
@@ -646,7 +663,9 @@ def run_one_base_dir(
         print(f"[Skip] Base dir does not exist: {base_dir}")
         return
 
-    dataset_dirs = sorted([p for p in base_dir.iterdir() if p.is_dir()])
+    dataset_dirs = sorted(
+        [p for p in base_dir.iterdir() if p.is_dir() and (p / "tse_audio_mapping.csv").is_file()]
+    )
     if not dataset_dirs:
         print(f"[Skip] No dataset directories under {base_dir}")
         return
@@ -687,6 +706,8 @@ def run_one_base_dir(
     txt_name = args.output_txt_name or default_txt_name
     output_csv = base_dir / csv_name
     output_txt = base_dir / txt_name
+    output_csv.parent.mkdir(parents=True, exist_ok=True)
+    output_txt.parent.mkdir(parents=True, exist_ok=True)
 
     result_df.to_csv(output_csv, index=False)
     print(f"[Saved] CSV: {output_csv}")
@@ -735,11 +756,12 @@ def run_regen_txt_only(
     default_csv_name, default_txt_name = default_output_names(base_dir.name)
     csv_name = args.output_csv_name or default_csv_name
     txt_name = args.output_txt_name or default_txt_name
-    output_csv = base_dir / csv_name
+    output_csv = resolve_existing_csv_path(base_dir, csv_name, default_csv_name)
     output_txt = base_dir / txt_name
     if not output_csv.exists():
         print(f"[Skip] CSV not found: {output_csv}")
         return
+    output_txt.parent.mkdir(parents=True, exist_ok=True)
 
     result_df = pd.read_csv(output_csv)
     overall, per_dataset_df = summarize(result_df, metrics)
