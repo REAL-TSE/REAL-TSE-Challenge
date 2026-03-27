@@ -83,27 +83,36 @@ $ export PYTHONPATH=$PWD/wesep/:$PYTHONPATH
 
 `pre.sh` is the recommended one-command preparation entrypoint. By default, it prepares the dataset and all model weights required by evaluation.
 
-Run with Google Drive file id:
+The DEV set must be downloaded manually from [Google Drive](https://drive.google.com/file/d/1uGTcTfRjOdqPa4PJAhjrXYLzxbGVy6pY/view?usp=sharing). `pre.sh` no longer downloads the dataset automatically.
+
+After downloading the archive manually, choose one of these layouts before running `pre.sh`:
 
 ```bash
-REALT_DATASET_GDRIVE_FILE_ID=<google_drive_file_id> bash -i ./pre.sh
+# Option 1: place the archive at the default path expected by pre.sh
+mkdir -p ./datasets/archives
+mv ~/Downloads/REAL-T-dev.tar.gz ./datasets/archives/REAL-T-dev.tar.gz
+
+# Option 2: keep the archive elsewhere and pass its path explicitly
+REALT_DATASET_ARCHIVE_PATH=/absolute/path/to/REAL-T-dev.tar.gz bash -i ./pre.sh
 ```
 
-Or run with a Google Drive sharing URL:
+If you have already extracted the dataset to `./datasets/REAL-T`, `pre.sh` will reuse it and only regenerate `mapping.csv`.
+
+Default run:
 
 ```bash
-REALT_DATASET_GDRIVE_URL='https://drive.google.com/file/d/.../view?usp=sharing' bash -i ./pre.sh
+bash -i ./pre.sh
 ```
-
-The dev-set is available at [Google Drive](https://drive.google.com/file/d/1uGTcTfRjOdqPa4PJAhjrXYLzxbGVy6pY/view?usp=sharing) 
 
 `pre.sh` supports 5 optional switches (all default to `1`):
 
-- `REALT_PREP_DOWNLOAD_DATASET`
+- `REALT_PREP_PREPARE_DATASET`
 - `REALT_PREP_DOWNLOAD_FIRERED_ASR`
 - `REALT_PREP_DOWNLOAD_WHISPER`
 - `REALT_PREP_DOWNLOAD_FIRERED_VAD`
 - `REALT_PREP_DOWNLOAD_DNSMOS`
+
+For backward compatibility, `REALT_PREP_DOWNLOAD_DATASET` is still accepted as an alias of `REALT_PREP_PREPARE_DATASET`.
 
 After a default run, files are prepared at:
 

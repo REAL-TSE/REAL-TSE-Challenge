@@ -81,13 +81,13 @@ PY
 }
 
 # ---- One-command preparation switches (all default to enabled) ----
-REALT_PREP_DOWNLOAD_DATASET="${REALT_PREP_DOWNLOAD_DATASET:-1}"
+REALT_PREP_PREPARE_DATASET="${REALT_PREP_PREPARE_DATASET:-${REALT_PREP_DOWNLOAD_DATASET:-1}}"
 REALT_PREP_DOWNLOAD_FIRERED_ASR="${REALT_PREP_DOWNLOAD_FIRERED_ASR:-1}"
 REALT_PREP_DOWNLOAD_WHISPER="${REALT_PREP_DOWNLOAD_WHISPER:-1}"
 REALT_PREP_DOWNLOAD_FIRERED_VAD="${REALT_PREP_DOWNLOAD_FIRERED_VAD:-1}"
 REALT_PREP_DOWNLOAD_DNSMOS="${REALT_PREP_DOWNLOAD_DNSMOS:-1}"
 
-require_binary_flag "REALT_PREP_DOWNLOAD_DATASET" "$REALT_PREP_DOWNLOAD_DATASET"
+require_binary_flag "REALT_PREP_PREPARE_DATASET" "$REALT_PREP_PREPARE_DATASET"
 require_binary_flag "REALT_PREP_DOWNLOAD_FIRERED_ASR" "$REALT_PREP_DOWNLOAD_FIRERED_ASR"
 require_binary_flag "REALT_PREP_DOWNLOAD_WHISPER" "$REALT_PREP_DOWNLOAD_WHISPER"
 require_binary_flag "REALT_PREP_DOWNLOAD_FIRERED_VAD" "$REALT_PREP_DOWNLOAD_FIRERED_VAD"
@@ -130,10 +130,11 @@ fi
 DATASETS_ROOT="./datasets"
 DATASET_ROOT="${DATASETS_ROOT}/REAL-T"
 ARCHIVE_DIR="${DATASETS_ROOT}/archives"
-ARCHIVE_NAME="${REALT_DATASET_ARCHIVE_NAME:-REAL-T-dev.tag.gz}"
-ARCHIVE_PATH="${ARCHIVE_DIR}/${ARCHIVE_NAME}"
+ARCHIVE_NAME="${REALT_DATASET_ARCHIVE_NAME:-REAL-T-dev.tar.gz}"
+DEFAULT_ARCHIVE_PATH="${ARCHIVE_DIR}/${ARCHIVE_NAME}"
+ARCHIVE_PATH="${REALT_DATASET_ARCHIVE_PATH:-$DEFAULT_ARCHIVE_PATH}"
 REBUILD_MAPPING_MODE="${REALT_MAPPING_MODE:-absolute}"
-FORCE_DATASET_DOWNLOAD="${REALT_FORCE_DATASET_DOWNLOAD:-0}"
+FORCE_DATASET_PREPARE="${REALT_FORCE_DATASET_PREPARE:-${REALT_FORCE_DATASET_DOWNLOAD:-0}}"
 
 mkdir -p "$DATASETS_ROOT"
 mkdir -p "$ARCHIVE_DIR"
@@ -146,26 +147,28 @@ have_full_dataset() {
     [ -d "${DATASET_ROOT}/json" ]
 }
 
-download_dataset_from_google_drive() {
-    local archive_source_desc
-    local gdrive_value
+print_dataset_manual_download_help() {
+    cat >&2 <<EOF
+REAL-T dataset not found under ${DATASET_ROOT}.
 
-    if [ -n "${REALT_DATASET_GDRIVE_FILE_ID:-}" ]; then
-        gdrive_value="${REALT_DATASET_GDRIVE_FILE_ID}"
-        archive_source_desc="Google Drive file ${REALT_DATASET_GDRIVE_FILE_ID}"
-    elif [ -n "${REALT_DATASET_GDRIVE_URL:-}" ]; then
-        gdrive_value="${REALT_DATASET_GDRIVE_URL}"
-        archive_source_desc="Google Drive URL"
-    else
-        echo "No Google Drive dataset source configured. Set REALT_DATASET_GDRIVE_FILE_ID or REALT_DATASET_GDRIVE_URL." >&2
+Please download the DEV dataset archive manually from:
+  https://drive.google.com/file/d/1uGTcTfRjOdqPa4PJAhjrXYLzxbGVy6pY/view?usp=sharing
+
+Then choose one of the following:
+  1. Extract it so the dataset is available at ${DATASET_ROOT}
+  2. Save the archive at ${DEFAULT_ARCHIVE_PATH}
+  3. Save it anywhere else and rerun with:
+     REALT_DATASET_ARCHIVE_PATH=/absolute/path/to/REAL-T-dev.tar.gz bash -i ./pre.sh
+EOF
+}
+
+prepare_dataset_from_local_archive() {
+    if [ ! -f "$ARCHIVE_PATH" ]; then
+        print_dataset_manual_download_help
         exit 1
     fi
 
-    python3 ./utils/download_dataset_archive.py \
-      --output "$ARCHIVE_PATH" \
-      --gdrive-file-id "$gdrive_value"
-
-    echo "Extracting REAL-T dataset from ${archive_source_desc}"
+    echo "Extracting REAL-T dataset from local archive: ${ARCHIVE_PATH}"
     rm -rf "$DATASET_ROOT"
     case "$ARCHIVE_PATH" in
         *.tar.gz|*.tgz)
@@ -181,14 +184,14 @@ download_dataset_from_google_drive() {
     esac
 }
 
-if [ "$REALT_PREP_DOWNLOAD_DATASET" = "1" ]; then
-    if [ "$FORCE_DATASET_DOWNLOAD" = "1" ] || ! have_full_dataset; then
-        download_dataset_from_google_drive
+if [ "$REALT_PREP_PREPARE_DATASET" = "1" ]; then
+    if [ "$FORCE_DATASET_PREPARE" = "1" ] || ! have_full_dataset; then
+        prepare_dataset_from_local_archive
     else
-        echo "Existing REAL-T dataset detected under $DATASET_ROOT. Skipping dataset download."
+        echo "Existing REAL-T dataset detected under $DATASET_ROOT. Skipping dataset extraction."
     fi
 else
-    echo "[Skip] Dataset download disabled by REALT_PREP_DOWNLOAD_DATASET=0"
+    echo "[Skip] Dataset preparation disabled by REALT_PREP_PREPARE_DATASET=0"
 fi
 
 if [ -d "$DATASET_ROOT" ]; then
