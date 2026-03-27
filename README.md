@@ -36,7 +36,7 @@ REAL-T now ships a single official evaluation split:
 
 Evaluations reveal that existing TSE models suffer significant performance degradation on REAL-T, highlighting the need for more robust approaches tailored to real conversational speech.
 
-For more details, refer to our paper: [REAL-T Paper](xxxxxxxxx)
+For more details, refer to our paper: [REAL-T Paper](https://www.isca-archive.org/interspeech_2025/li25da_interspeech.pdf)
 
 
 ## 2. Installation
@@ -120,7 +120,7 @@ Existing files are reused when possible, so repeated runs are safe.
 
 ### 3.1 TSE Inference on REAL-T
 
-The `run_tse.sh` script below demonstrates how to perform TSE inference with the [Wesep toolkit](https://github.com/wenet-e2e/wesep) using a **BSRNN model** trained on **VoxCeleb1**. You can adapt its `input/output` structure to suit your own TSE model.
+The `run_tse.sh` script below demonstrates how to perform TSE inference with the [wesep-real-tse toolkit](https://github.com/REAL-TSE/wesep-real-tse) using a **BSRNN model** trained on **Libri2mix-100**. You can adapt its `input/output` structure to suit your own TSE model.
 
 ```bash
 cd REAL-TSE-Challenge
