@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Compute DNSMOS (SIG, BAK, OVRL, P808) for TSE output audios.
-Uses the same data layout as spk_similarity_eval: base_dir/dataset/tse_audio_mapping.csv + test_set_dir/{dataset}_meta.csv.
+Uses the same data layout as spk_similarity_eval: output_dir/dataset/tse_audio_mapping.csv + test_set_dir/{dataset}_meta.csv.
 """
 
 import argparse
@@ -18,7 +18,7 @@ SAMPLING_RATE = 16000
 INPUT_LENGTH = 9.01
 
 OUTPUT_COLUMNS = [
-    "base_dir",
+    "output_dir",
     "dataset",
     "utterance",
     "path",
@@ -36,15 +36,15 @@ def parse_args() -> argparse.Namespace:
         description="Compute DNSMOS (SIG, BAK, OVRL, P808) for TSE output audios."
     )
     parser.add_argument(
-        "--base_dir",
+        "--output_dir",
         action="append",
         required=True,
-        help="Base TSE output directory. Repeat for multiple roots.",
+        help="TSE output directory. Repeat for multiple roots.",
     )
     parser.add_argument(
         "--test_set_dir",
         default=None,
-        help="Directory containing *_meta.csv (e.g. ./datasets/REAL-T/PRIMARY). Required unless --regen_txt_only.",
+        help="Directory containing *_meta.csv (e.g. ./datasets/REAL-T/DEV). Required unless --regen_txt_only.",
     )
     parser.add_argument(
         "--dnsmos_model_dir",
@@ -66,7 +66,7 @@ def parse_args() -> argparse.Namespace:
         "--max_samples",
         type=int,
         default=None,
-        help="Optional cap on number of rows per base_dir.",
+        help="Optional cap on number of rows per output_dir.",
     )
     parser.add_argument(
         "--personalized_MOS",
@@ -76,12 +76,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output_csv_name",
         default=None,
-        help="Output CSV filename under each base_dir. Default: <base_name>_dnsmos.csv.",
+        help="Output CSV filename under each output_dir. Default: <output_name>_dnsmos.csv.",
     )
     parser.add_argument(
         "--output_txt_name",
         default=None,
-        help="Output TXT filename under each base_dir. Default: <base_name>_dnsmos.txt.",
+        help="Output TXT filename under each output_dir. Default: <output_name>_dnsmos.txt.",
     )
     parser.add_argument(
         "--regen_txt_only",
@@ -281,7 +281,7 @@ class DNSMOSComputeScore:
 def resolve_estimation_path(
     raw_path: object,
     repo_root: Path,
-    base_dir: Path,
+    output_dir: Path,
     dataset: str,
 ) -> Optional[Path]:
     if raw_path is None or pd.isna(raw_path):
@@ -295,14 +295,31 @@ def resolve_estimation_path(
     cwd_candidate = path_obj.resolve()
     if cwd_candidate.exists():
         return cwd_candidate
-    fallback = (base_dir / dataset / "wav" / path_obj.name).resolve()
+    fallback = (output_dir / dataset / "wav" / path_obj.name).resolve()
     if fallback.exists():
         return fallback
     return None
 
 
-def default_output_names(base_name: str) -> Tuple[str, str]:
-    return f"{base_name}_dnsmos.csv", f"{base_name}_dnsmos.txt"
+def default_output_names(output_name: str) -> Tuple[str, str]:
+    return f"{output_name}_dnsmos.csv", f"{output_name}_dnsmos.txt"
+
+
+def resolve_existing_csv_path(
+    output_dir: Path,
+    csv_name: str,
+    legacy_csv_name: str,
+) -> Path:
+    primary = output_dir / csv_name
+    candidates = [primary]
+    if "/" in csv_name or "\\" in csv_name:
+        legacy = output_dir / legacy_csv_name
+        if legacy not in candidates:
+            candidates.append(legacy)
+    for path in candidates:
+        if path.exists():
+            return path
+    return primary
 
 
 def parse_dataset_lang_overrides(raw: str) -> Dict[str, str]:
@@ -323,7 +340,7 @@ def parse_dataset_lang_overrides(raw: str) -> Dict[str, str]:
 
 
 def build_dataset_rows(
-    base_dir: Path,
+    output_dir: Path,
     dataset: str,
     test_set_dir: Path,
     scorer: Optional[DNSMOSComputeScore],
@@ -333,7 +350,7 @@ def build_dataset_rows(
 ) -> Tuple[List[dict], int]:
     rows: List[dict] = []
     meta_csv = test_set_dir / f"{dataset}_meta.csv"
-    tse_mapping_csv = base_dir / dataset / "tse_audio_mapping.csv"
+    tse_mapping_csv = output_dir / dataset / "tse_audio_mapping.csv"
     if not meta_csv.exists():
         print(f"[Skip] Missing meta csv: {meta_csv}")
         return rows, processed_so_far
@@ -354,14 +371,14 @@ def build_dataset_rows(
     for item in tqdm(
         merged.itertuples(index=False),
         total=len(merged),
-        desc=f"{base_dir.name}/{dataset}",
+        desc=f"{output_dir.name}/{dataset}",
         leave=False,
     ):
         if max_samples is not None and processed_so_far >= max_samples:
             break
         utt = str(item.utterance)
         wav_path = resolve_estimation_path(
-            item.path, repo_root, base_dir, dataset
+            item.path, repo_root, output_dir, dataset
         )
 
         sig = bak = ovrl = p808 = np.nan
@@ -382,7 +399,7 @@ def build_dataset_rows(
 
         rows.append(
             {
-                "base_dir": str(base_dir),
+                "output_dir": str(output_dir),
                 "dataset": dataset,
                 "utterance": utt,
                 "path": str(wav_path) if wav_path is not None else "",
@@ -633,8 +650,8 @@ def write_summary_txt(
     output_txt.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def run_one_base_dir(
-    base_dir: Path,
+def run_one_output_dir(
+    output_dir: Path,
     test_set_dir: Path,
     model_dir: Path,
     args: argparse.Namespace,
@@ -642,13 +659,15 @@ def run_one_base_dir(
     repo_root: Path,
     metrics: List[str],
 ) -> None:
-    if not base_dir.exists():
-        print(f"[Skip] Base dir does not exist: {base_dir}")
+    if not output_dir.exists():
+        print(f"[Skip] Output dir does not exist: {output_dir}")
         return
 
-    dataset_dirs = sorted([p for p in base_dir.iterdir() if p.is_dir()])
+    dataset_dirs = sorted(
+        [p for p in output_dir.iterdir() if p.is_dir() and (p / "tse_audio_mapping.csv").is_file()]
+    )
     if not dataset_dirs:
-        print(f"[Skip] No dataset directories under {base_dir}")
+        print(f"[Skip] No dataset directories under {output_dir}")
         return
 
     scorer = None
@@ -668,7 +687,7 @@ def run_one_base_dir(
     for dataset_dir in dataset_dirs:
         dataset = dataset_dir.name
         rows, processed = build_dataset_rows(
-            base_dir=base_dir,
+            output_dir=output_dir,
             dataset=dataset,
             test_set_dir=test_set_dir,
             scorer=scorer,
@@ -682,11 +701,13 @@ def run_one_base_dir(
 
     result_df = pd.DataFrame(all_rows, columns=OUTPUT_COLUMNS)
 
-    default_csv_name, default_txt_name = default_output_names(base_dir.name)
+    default_csv_name, default_txt_name = default_output_names(output_dir.name)
     csv_name = args.output_csv_name or default_csv_name
     txt_name = args.output_txt_name or default_txt_name
-    output_csv = base_dir / csv_name
-    output_txt = base_dir / txt_name
+    output_csv = output_dir / csv_name
+    output_txt = output_dir / txt_name
+    output_csv.parent.mkdir(parents=True, exist_ok=True)
+    output_txt.parent.mkdir(parents=True, exist_ok=True)
 
     result_df.to_csv(output_csv, index=False)
     print(f"[Saved] CSV: {output_csv}")
@@ -724,22 +745,23 @@ def run_one_base_dir(
 
 
 def run_regen_txt_only(
-    base_dir: Path,
+    output_dir: Path,
     dataset_lang_overrides: Dict[str, str],
     args: argparse.Namespace,
     metrics: List[str],
 ) -> None:
-    if not base_dir.exists():
-        print(f"[Skip] Base dir does not exist: {base_dir}")
+    if not output_dir.exists():
+        print(f"[Skip] Output dir does not exist: {output_dir}")
         return
-    default_csv_name, default_txt_name = default_output_names(base_dir.name)
+    default_csv_name, default_txt_name = default_output_names(output_dir.name)
     csv_name = args.output_csv_name or default_csv_name
     txt_name = args.output_txt_name or default_txt_name
-    output_csv = base_dir / csv_name
-    output_txt = base_dir / txt_name
+    output_csv = resolve_existing_csv_path(output_dir, csv_name, default_csv_name)
+    output_txt = output_dir / txt_name
     if not output_csv.exists():
         print(f"[Skip] CSV not found: {output_csv}")
         return
+    output_txt.parent.mkdir(parents=True, exist_ok=True)
 
     result_df = pd.read_csv(output_csv)
     overall, per_dataset_df = summarize(result_df, metrics)
@@ -766,9 +788,9 @@ def main() -> None:
     dataset_lang_overrides = parse_dataset_lang_overrides(args.dataset_lang_overrides)
 
     if args.regen_txt_only:
-        for base_dir_raw in args.base_dir:
+        for output_dir_raw in args.output_dir:
             run_regen_txt_only(
-                base_dir=Path(base_dir_raw).resolve(),
+                output_dir=Path(output_dir_raw).resolve(),
                 dataset_lang_overrides=dataset_lang_overrides,
                 args=args,
                 metrics=metrics,
@@ -783,9 +805,9 @@ def main() -> None:
     if not test_set_dir.exists():
         raise SystemExit(f"test_set_dir does not exist: {test_set_dir}")
 
-    for base_dir_raw in args.base_dir:
-        run_one_base_dir(
-            base_dir=Path(base_dir_raw).resolve(),
+    for output_dir_raw in args.output_dir:
+        run_one_output_dir(
+            output_dir=Path(output_dir_raw).resolve(),
             test_set_dir=test_set_dir,
             model_dir=model_dir,
             args=args,

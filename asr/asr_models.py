@@ -7,11 +7,8 @@ import torchaudio
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 FIREREDASR_ROOT = PROJECT_ROOT / "FireRedASR"
-FIREREDASR2S_ROOT = PROJECT_ROOT / "FireRedASR2S"
 if str(FIREREDASR_ROOT) not in sys.path:
     sys.path.insert(0, str(FIREREDASR_ROOT))
-if str(FIREREDASR2S_ROOT) not in sys.path:
-    sys.path.insert(0, str(FIREREDASR2S_ROOT))
 
 
 
@@ -28,12 +25,6 @@ def _require_model_files(model_dir, required_files):
             f"Missing required model files in {model_path}: {missing_str}"
         )
     return str(model_path)
-
-
-def _import_fireredasr2():
-    from fireredasr2s.fireredasr2 import FireRedAsr2, FireRedAsr2Config
-
-    return FireRedAsr2, FireRedAsr2Config
 
 
 def _import_fireredasr():
@@ -114,57 +105,3 @@ class FireRedASR_AED_L_ASRModel:
             )
             transcription = results[0]['text']
             return transcription.strip()
-
-
-class FireRedASR2_AED_ASRModel:
-    def __init__(
-        self,
-        model_name="aed",
-        model_path=None,
-        device="cuda",
-        use_gpu=True,
-        use_half=False,
-        batch_size=1,
-    ):
-        del device  # Device selection is handled by FireRedAsr2Config.use_gpu.
-        model_path = model_path or _project_path(
-            "FireRedASR2S", "pretrained_models", "FireRedASR2-AED"
-        )
-        model_path = _require_model_files(
-            model_path,
-            ["model.pth.tar", "cmvn.ark", "dict.txt", "train_bpe1000.model"],
-        )
-        FireRedAsr2, FireRedAsr2Config = _import_fireredasr2()
-        use_gpu = use_gpu and torch.cuda.is_available()
-        self.batch_size = batch_size
-        self.model = FireRedAsr2.from_pretrained(
-            model_name,
-            model_path,
-            FireRedAsr2Config(
-                use_gpu=use_gpu,
-                use_half=use_half and use_gpu,
-                beam_size=3,
-                nbest=1,
-                decode_max_len=0,
-                softmax_smoothing=1.25,
-                aed_length_penalty=0.6,
-                eos_penalty=1.0,
-                return_timestamp=False,
-            ),
-        )
-
-    def transcribe_audio(self, audio_path, language=None):
-        del language
-        with torch.no_grad():
-            results = self.model.transcribe(["dummy_id"], [audio_path])
-        if not results:
-            return ""
-        return results[0]["text"].strip()
-
-    def transcribe_batch(self, utterances, audio_paths):
-        with torch.no_grad():
-            results = self.model.transcribe(utterances, audio_paths)
-        transcripts = [result.get("text", "").strip() for result in results]
-        if len(transcripts) < len(utterances):
-            transcripts.extend([""] * (len(utterances) - len(transcripts)))
-        return transcripts[: len(utterances)]

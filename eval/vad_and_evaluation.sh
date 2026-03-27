@@ -20,7 +20,7 @@ FRAME_SHIFT="${FRAME_SHIFT:-0.01}"
 COLLAR="${COLLAR:-0.05}"
 MATCH_TOLERANCE="${MATCH_TOLERANCE:-0.02}"
 
-init_eval_common "./output/PRIMARY/bsrnn_vox1"
+init_eval_common "./output/DEV/bsrnn_vox1"
 
 MODES=("$@")
 if [ ${#MODES[@]} -eq 0 ]; then
@@ -38,11 +38,11 @@ run_vad() {
         exit 1
     fi
 
-    for BASE_DIR in "${BASE_DIR_LIST[@]}"; do
-        echo "Running VAD for base directory: $BASE_DIR"
-        mapfile -t dataset_dirs < <(list_dataset_dirs "$BASE_DIR")
+    for OUTPUT_DIR in "${OUTPUT_DIR_LIST[@]}"; do
+        echo "Running VAD for output directory: $OUTPUT_DIR"
+        mapfile -t dataset_dirs < <(list_dataset_dirs "$OUTPUT_DIR")
         if [ ${#dataset_dirs[@]} -eq 0 ]; then
-            echo "No datasets found under $BASE_DIR, skipping."
+            echo "No datasets found under $OUTPUT_DIR, skipping."
             continue
         fi
 
@@ -76,17 +76,19 @@ run_vad() {
 }
 
 run_timing_evaluation() {
-    for BASE_DIR in "${BASE_DIR_LIST[@]}"; do
-        echo "Running timing evaluation for base directory: $BASE_DIR"
-        BASE_NAME="$(basename "$BASE_DIR")"
-        RESULT_CSV="${BASE_DIR}/${BASE_NAME}_TSE_TIMING.csv"
-        RESULT_TXT="${BASE_DIR}/${BASE_NAME}_TSE_TIMING.txt"
+    for OUTPUT_DIR in "${OUTPUT_DIR_LIST[@]}"; do
+        echo "Running timing evaluation for output directory: $OUTPUT_DIR"
+        OUTPUT_NAME="$(basename "$OUTPUT_DIR")"
+        METRICS_DIR="$(eval_metrics_dir "$OUTPUT_DIR")"
+        mkdir -p "$METRICS_DIR"
+        RESULT_CSV="${METRICS_DIR}/${OUTPUT_NAME}_TSE_TIMING.csv"
+        RESULT_TXT="${METRICS_DIR}/${OUTPUT_NAME}_TSE_TIMING.txt"
 
         python3 "$PREPARE_LABEL_SCRIPT" \
             --ground_truth_dir "$TEST_SET_DIR" \
             --metadata_dir "$METADATA_DIR" \
             --gt_json_base_dir "$GT_JSON_BASE_DIR" \
-            --predicted_dir "$BASE_DIR" \
+            --predicted_dir "$OUTPUT_DIR" \
             --datasets "$DATASETS" \
             --vad_dir_name "$VAD_DIR_NAME" \
             --collar "$COLLAR" \
@@ -94,7 +96,7 @@ run_timing_evaluation() {
 
         python3 "$EVAL_SCRIPT" \
             --ground_truth_dir "$TEST_SET_DIR" \
-            --predicted_dir "$BASE_DIR" \
+            --predicted_dir "$OUTPUT_DIR" \
             --gt_json_base_dir "$GT_JSON_BASE_DIR" \
             --datasets "$DATASETS" \
             --vad_dir_name "$VAD_DIR_NAME" \
@@ -112,9 +114,9 @@ run_timing_evaluation() {
 }
 
 run_visualization() {
-    for BASE_DIR in "${BASE_DIR_LIST[@]}"; do
-        echo "Running visualization for base directory: $BASE_DIR"
-        mapfile -t dataset_dirs < <(list_dataset_dirs "$BASE_DIR")
+    for OUTPUT_DIR in "${OUTPUT_DIR_LIST[@]}"; do
+        echo "Running visualization for output directory: $OUTPUT_DIR"
+        mapfile -t dataset_dirs < <(list_dataset_dirs "$OUTPUT_DIR")
 
         for dataset_path in "${dataset_dirs[@]}"; do
             dataset="$(basename "$dataset_path")"
@@ -126,8 +128,13 @@ run_visualization() {
             label_jsonl="${vad_dir}/label_segments.jsonl"
             vad_jsonl="${vad_dir}/${VAD_JSONL_NAME}"
             output_dir="${vad_dir}/figures"
-            BASE_NAME="$(basename "$BASE_DIR")"
-            METRICS_CSV="${BASE_DIR}/${BASE_NAME}_TSE_TIMING.csv"
+            OUTPUT_NAME="$(basename "$OUTPUT_DIR")"
+            METRICS_DIR="$(eval_metrics_dir "$OUTPUT_DIR")"
+            METRICS_CSV="${METRICS_DIR}/${OUTPUT_NAME}_TSE_TIMING.csv"
+            LEGACY_METRICS_CSV="${OUTPUT_DIR}/${OUTPUT_NAME}_TSE_TIMING.csv"
+            if [ ! -f "$METRICS_CSV" ] && [ -f "$LEGACY_METRICS_CSV" ]; then
+                METRICS_CSV="$LEGACY_METRICS_CSV"
+            fi
 
             if [ ! -f "$label_jsonl" ]; then
                 echo "Skipping $dataset: missing label segments ($label_jsonl)"
@@ -168,3 +175,5 @@ for mode in "${MODES[@]}"; do
         exit 1
     fi
 done
+
+echo "All tasks finished successfully!"

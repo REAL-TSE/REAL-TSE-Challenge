@@ -11,9 +11,6 @@
   <a href="https://real-tse.github.io/">
     <img src="https://img.shields.io/badge/REAL--T-Page-blue" alt="REAL-T Page">
   </a>
-  <a href="https://huggingface.co/datasets/SLbaba/REAL-T">
-    <img src="https://img.shields.io/badge/Datasets-HuggingFace-yellow" alt="Datasets on Hugging Face">
-  </a>
 </p>
 
 ![Pipeline](./figure/pipeline.svg)
@@ -33,9 +30,9 @@ Key features of REAL-T include:
 - **Multi-genre**: Covering diverse conversational scenarios
 - **Multi-enrollment**: Multiple enrollment utterance from different parts of the conversation
 
-To support controlled evaluation, we define test sets:
+REAL-T now ships a single official evaluation split:
 
-- **DEVSET**: A realistic and challenging benchmark
+- **DEV**: The conversation-centric development benchmark used throughout this repository
 
 Evaluations reveal that existing TSE models suffer significant performance degradation on REAL-T, highlighting the need for more robust approaches tailored to real conversational speech.
 
@@ -44,13 +41,11 @@ For more details, refer to our paper: [REAL-T Paper](xxxxxxxxx)
 
 ## 2. Installation
 
-Datasets are at [huggingface](https://huggingface.co/datasets/SLbaba/REAL-T).
-
 ### 2.1 Clone the repository
 
 ```bash
 git clone https://github.com/REAL-TSE/REAL-T.git
-cd REAL-T
+cd REAL-TSE-Challenge
 
 # install submodules (wesep + FireRedASR2S)
 git submodule update --init --recursive
@@ -86,11 +81,38 @@ $ export PYTHONPATH=$PWD/wesep/:$PYTHONPATH
 
 ### 2.4 Prepare Dataset and Checkpoints
 
-Evaluation requires the `REAL-T` dataset and the ASR model checkpoint `FireRedASR-AED-L` and `whisper-large-v2` from Hugging Face. The dataset must be prepared in a specific format before running evaluation. To automatically set up everything, run:
+`pre.sh` is the recommended one-command preparation entrypoint. By default, it prepares the dataset and all model weights required by evaluation.
+
+Run with Google Drive file id:
 
 ```bash
-bash -i ./pre.sh
+REALT_DATASET_GDRIVE_FILE_ID=<google_drive_file_id> bash -i ./pre.sh
 ```
+
+Or run with a Google Drive sharing URL:
+
+```bash
+REALT_DATASET_GDRIVE_URL='https://drive.google.com/file/d/.../view?usp=sharing' bash -i ./pre.sh
+```
+
+`pre.sh` supports 5 optional switches (all default to `1`):
+
+- `REALT_PREP_DOWNLOAD_DATASET`
+- `REALT_PREP_DOWNLOAD_FIRERED_ASR`
+- `REALT_PREP_DOWNLOAD_WHISPER`
+- `REALT_PREP_DOWNLOAD_FIRERED_VAD`
+- `REALT_PREP_DOWNLOAD_DNSMOS`
+
+After a default run, files are prepared at:
+
+- Dataset root: `./datasets/REAL-T`
+- Dataset mapping: `./datasets/REAL-T/mapping.csv`
+- FireRedASR-AED-L: `./FireRedASR/pretrained_models/FireRedASR-AED-L`
+- Whisper large-v2: `./whisper/pretrained_models/whisper-large-v2`
+- FireRedVAD: `./FireRedASR2S/pretrained_models/FireRedVAD/VAD`
+- DNSMOS ONNX: `./DNSMOS/sig_bak_ovr.onnx` and `./DNSMOS/model_v8.onnx`
+
+Existing files are reused when possible, so repeated runs are safe.
 
 ## 3. Inference and Evaluation
 
@@ -99,7 +121,7 @@ bash -i ./pre.sh
 The `run_tse.sh` script below demonstrates how to perform TSE inference with the [Wesep toolkit](https://github.com/wenet-e2e/wesep) using a **BSRNN model** trained on **VoxCeleb1**. You can adapt its `input/output` structure to suit your own TSE model.
 
 ```bash
-cd REAL-T
+cd REAL-TSE-Challenge
 bash -i run_tse.sh
 ```
 
@@ -107,12 +129,12 @@ This script runs TSE inference for multiple datasets using a specified model. Ea
 
 | **Variable Name** | **Description** |
 | :--- | :--- |
-| `MODEL_NAME 🚩` | Name of the TSE model used for inference (e.g., `BSRNN_EMB`). |
-| `DATASETS 🚩` | List of datasets to process (e.g., AliMeeting, AMI, CHiME6, AISHELL-4, DipCo). Fisher can also be included if needed. |
-| `TEST_SET 🚩` | Test subset to use: `DEVSET` . |
+| `MODEL_NAME 🚩` | Name of the TSE model used for inference (e.g., `bsrnn_vox1`). |
+| `DATASETS 🚩` | List of datasets to process (e.g., AliMeeting, AMI, CHiME6, AISHELL-4, DipCo). |
+| `TEST_SET 🚩` | Test subset to use: `DEV`. |
 | `DEVICE 🚩` | Device on which to run inference (`cuda` for GPU, `cpu` for CPU). |
-| `BASE_META_PATH` | Base directory containing metadata CSV files for each dataset. |
-| `BASE_OUTPUT_DIR` | Directory where the separated audios will be saved. |
+| `DATASET_ROOT` | Root directory containing metadata CSV files for each dataset. |
+| `OUTPUT_ROOT` | Directory where the separated audios will be saved. |
 | `TSE_SCRIPT` | Path to the TSE inference Python script (`tse.py`). |
 | `META_CSV_PATH` | Path to the CSV file containing mixture and enrolment utterance metadata. |
 | `UTTERANCE_MAP_CSV` | Path to the CSV mapping enrolment utterances to mixture utterances. |
@@ -122,24 +144,24 @@ This script runs TSE inference for multiple datasets using a specified model. Ea
 
 ### 3.2 One-Click Evaluation
 
-The recommended evaluation entrypoint is now `run_eval.sh` at the repo root. It runs the full evaluation pipeline sequentially on one `BASE_DIR`, using one CUDA device for all stages.
+The recommended evaluation entrypoint is now `run_eval.sh` at the repo root. It runs the full evaluation pipeline sequentially on one `OUTPUT_DIR`, using one CUDA device for all stages.
 
 ```bash
-cd REAL-T
-bash ./run_eval.sh --base-dir ./output/DEVSET/BSRNN --test-set DEVSET --cuda 0
+cd REAL-TSE-Challenge
+bash ./run_eval.sh --output-dir ./output/DEV/BSRNN --test-set DEV --cuda 0
 ```
 
 `run_eval.sh` supports three common usages:
 
 ```bash
 # 1 2: run all evaluation sub-scripts, then summarize
-bash ./run_eval.sh --base-dir ./output/DEVSET/BSRNN --test-set DEVSET --cuda 0 1 2
+bash ./run_eval.sh --output-dir ./output/DEV/BSRNN --test-set DEV --cuda 0 1 2
 
 # 1: only run all evaluation sub-scripts
-bash ./run_eval.sh --base-dir ./output/DEVSET/BSRNN --test-set DEVSET --cuda 0 1
+bash ./run_eval.sh --output-dir ./output/DEV/BSRNN --test-set DEV --cuda 0 1
 
 # 2: only summarize existing CSV results
-bash ./run_eval.sh --base-dir ./output/DEVSET/BSRNN --test-set DEVSET --cuda 0 2
+bash ./run_eval.sh --output-dir ./output/DEV/BSRNN --test-set DEV --cuda 0 2
 ```
 
 If no mode is provided, the default is `1 2`.
@@ -147,29 +169,23 @@ If no mode is provided, the default is `1 2`.
 By default, `run_eval.sh` runs:
 
 1. `TER`
-2. `TER_ASR2_AED`
-3. `TSE timing`
-4. `speaker similarity (tse_enrol)`
-5. `speaker similarity (mixture_enrol)`
-6. `DNSMOS`
+2. `RATIP (TSE timing)`
+3. `speaker similarity (tse_enrol)`
+4. `speaker similarity (mixture_enrol)`
+5. `DNSMOS`
 
-Optional Fisher support:
+Expected outputs under the chosen `OUTPUT_DIR`:
 
-```bash
-bash ./run_eval.sh --base-dir ./output/DEVSET/BSRNN --test-set DEVSET --cuda 0 --include-fisher
-```
+- Detailed metric files under `eval_metrics/` (configurable via `EVAL_METRICS_SUBDIR`):
+  - `eval_metrics/{OUTPUT_NAME}_TER.csv` and `eval_metrics/{OUTPUT_NAME}_TER.txt`
+  - `eval_metrics/{OUTPUT_NAME}_TSE_TIMING.csv` and `eval_metrics/{OUTPUT_NAME}_TSE_TIMING.txt`
+  - `eval_metrics/{OUTPUT_NAME}_spk_similarity.csv` and `eval_metrics/{OUTPUT_NAME}_spk_similarity_summary.txt`
+  - `eval_metrics/{OUTPUT_NAME}_spk_similarity_mixture_enrol.csv` and `eval_metrics/{OUTPUT_NAME}_spk_similarity_mixture_enrol_summary.txt`
+  - `eval_metrics/{OUTPUT_NAME}_dnsmos.csv` and `eval_metrics/{OUTPUT_NAME}_dnsmos.txt`
+- Aggregated report at the output directory root:
+  - `{OUTPUT_NAME}_summary.txt`
 
-Expected summary outputs under the chosen `BASE_DIR`:
-
-- `{BASE_NAME}_TER.csv` and `{BASE_NAME}_TER.txt`
-- `{BASE_NAME}_TER_ASR2_AED.csv` and `{BASE_NAME}_TER_ASR2_AED.txt`
-- `{BASE_NAME}_TSE_TIMING.csv` and `{BASE_NAME}_TSE_TIMING.txt`
-- `{BASE_NAME}_spk_similarity.csv` and `{BASE_NAME}_spk_similarity_summary.txt`
-- `{BASE_NAME}_spk_similarity_mixture_enrol.csv` and `{BASE_NAME}_spk_similarity_mixture_enrol_summary.txt`
-- `{BASE_NAME}_dnsmos.csv` and `{BASE_NAME}_dnsmos.txt`
-- `{BASE_NAME}_summary.txt`
-
-`{BASE_NAME}_summary.txt` is a compact aggregated report recomputed from the CSV files above. It contains:
+`{OUTPUT_NAME}_summary.txt` is a compact aggregated report recomputed from the metric CSV files above. It contains:
 
 - `Mean by dataset`
 - `Mean by language`
@@ -181,7 +197,7 @@ with grouped columns:
 - `DNSMOS`: `SIG`, `BAK`, `OVRL`, `P808`
 - `RATIO`: `precision`, `recall`, `f1`
 
-At the moment, `RATIO` is fully sourced from `{BASE_NAME}_TSE_TIMING.csv`, using the mean `precision`, `recall`, and `f1`.
+At the moment, `RATIO` is fully sourced from `eval_metrics/{OUTPUT_NAME}_TSE_TIMING.csv`, using the mean `precision`, `recall`, and `f1`.
 
 Detailed per-metric instructions, prerequisites, and optional visualization are now documented in [`eval/README.md`](./eval/README.md).
 

@@ -8,30 +8,28 @@ MODEL_DIR="./pretrained"          # Directory containing the model checkpoint
 
 # Dataset names
 DATASETS=("AliMeeting" "AMI" "CHiME6" "AISHELL-4" "DipCo")
-# DATASETS=("AliMeeting" "AMI" "CHiME6" "AISHELL-4" "DipCo" "Fisher")
 
 # Test subset
-TEST_SET="PRIMARY"
-# TEST_SET="BASE"
+TEST_SET="DEV"
 
 DEVICE="cuda"
 
-# Base paths
-BASE_META_PATH="./datasets/REAL-T"
-BASE_OUTPUT_DIR="./output"
+# Paths
+DATASET_ROOT="./datasets/REAL-T"
+OUTPUT_ROOT="./output"
 
 
 TSE_SCRIPT="./tse_baseline/tse_inference.py"
 
-BASE_OUTPUT_DIR="${BASE_OUTPUT_DIR}/${TEST_SET}"
-mkdir -p "$BASE_OUTPUT_DIR"
+OUTPUT_ROOT="${OUTPUT_ROOT}/${TEST_SET}"
+mkdir -p "$OUTPUT_ROOT"
 # Iterate over each dataset
 for DATASET in "${DATASETS[@]}"; do
     echo "Processing dataset: $DATASET"
 
-    META_CSV_PATH="${BASE_META_PATH}/${TEST_SET}/${DATASET}_meta.csv"
-    UTTERANCE_MAP_CSV="${BASE_META_PATH}/mapping.csv"
-    OUTPUT_DIR="${BASE_OUTPUT_DIR}/${MODEL_NAME}/"
+    META_CSV_PATH="${DATASET_ROOT}/${TEST_SET}/${DATASET}_meta.csv"
+    UTTERANCE_MAP_CSV="${DATASET_ROOT}/mapping.csv"
+    OUTPUT_DIR="${OUTPUT_ROOT}/${MODEL_NAME}/"
 
     mkdir -p "$OUTPUT_DIR"
 

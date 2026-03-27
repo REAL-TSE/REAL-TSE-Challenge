@@ -4,13 +4,13 @@ set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
-TEST_SET_DIR="${TEST_SET_DIR:-./datasets/REAL-T/PRIMARY}"
+TEST_SET_DIR="${TEST_SET_DIR:-./datasets/REAL-T/DEV}"
 DNSMOS_MODEL_DIR="${DNSMOS_MODEL_DIR:-./DNSMOS}"
 DNSMOS_PROVIDER="${DNSMOS_PROVIDER:-auto}"
 DNSMOS_NO_DOWNLOAD="${DNSMOS_NO_DOWNLOAD:-0}"
 MAX_SAMPLES="${MAX_SAMPLES:-}"
 
-init_eval_common "./output/PRIMARY/bsrnn_vox1 ./output/PRIMARY/BSRNN"
+init_eval_common "./output/DEV/bsrnn_vox1 ./output/DEV/BSRNN"
 
 MODES=("$@")
 if [ ${#MODES[@]} -eq 0 ]; then
@@ -18,19 +18,37 @@ if [ ${#MODES[@]} -eq 0 ]; then
     exit 1
 fi
 
+dnsmos_output_names() {
+    local output_name="$1"
+    local csv_name="${output_name}_dnsmos.csv"
+    local txt_name="${output_name}_dnsmos.txt"
+    if [ -n "${EVAL_METRICS_SUBDIR:-}" ]; then
+        csv_name="${EVAL_METRICS_SUBDIR}/${csv_name}"
+        txt_name="${EVAL_METRICS_SUBDIR}/${txt_name}"
+    fi
+    echo "${csv_name}|${txt_name}"
+}
+
 run_dnsmos_full() {
-    for BASE_DIR in "${BASE_DIR_LIST[@]}"; do
-        if [ ! -d "$BASE_DIR" ]; then
-            echo "[Skip] Base directory does not exist: $BASE_DIR"
+    for OUTPUT_DIR in "${OUTPUT_DIR_LIST[@]}"; do
+        if [ ! -d "$OUTPUT_DIR" ]; then
+            echo "[Skip] Output directory does not exist: $OUTPUT_DIR"
             continue
         fi
 
+        OUTPUT_NAME="$(basename "$OUTPUT_DIR")"
+        OUTPUT_NAMES="$(dnsmos_output_names "$OUTPUT_NAME")"
+        OUTPUT_CSV_NAME="${OUTPUT_NAMES%%|*}"
+        OUTPUT_TXT_NAME="${OUTPUT_NAMES##*|}"
+
         CMD=(
             python3 "${REAL_T_ROOT}/utils/dnsmos_eval.py"
-            --base_dir "$BASE_DIR"
+            --output_dir "$OUTPUT_DIR"
             --test_set_dir "$TEST_SET_DIR"
             --dnsmos_model_dir "$DNSMOS_MODEL_DIR"
             --provider "$DNSMOS_PROVIDER"
+            --output_csv_name "$OUTPUT_CSV_NAME"
+            --output_txt_name "$OUTPUT_TXT_NAME"
             --csv_only
         )
         if [ "$DNSMOS_NO_DOWNLOAD" = "1" ]; then
@@ -40,21 +58,28 @@ run_dnsmos_full() {
             CMD+=(--max_samples "$MAX_SAMPLES")
         fi
 
-        echo "Running DNSMOS (mode 1: compute & CSV) for BASE_DIR=$BASE_DIR provider=$DNSMOS_PROVIDER"
+        echo "Running DNSMOS (mode 1: compute & CSV) for OUTPUT_DIR=$OUTPUT_DIR provider=$DNSMOS_PROVIDER"
         "${CMD[@]}"
     done
 }
 
 run_dnsmos_regen_txt() {
-    for BASE_DIR in "${BASE_DIR_LIST[@]}"; do
-        if [ ! -d "$BASE_DIR" ]; then
-            echo "[Skip] Base directory does not exist: $BASE_DIR"
+    for OUTPUT_DIR in "${OUTPUT_DIR_LIST[@]}"; do
+        if [ ! -d "$OUTPUT_DIR" ]; then
+            echo "[Skip] Output directory does not exist: $OUTPUT_DIR"
             continue
         fi
 
+        OUTPUT_NAME="$(basename "$OUTPUT_DIR")"
+        OUTPUT_NAMES="$(dnsmos_output_names "$OUTPUT_NAME")"
+        OUTPUT_CSV_NAME="${OUTPUT_NAMES%%|*}"
+        OUTPUT_TXT_NAME="${OUTPUT_NAMES##*|}"
+
         python3 "${REAL_T_ROOT}/utils/dnsmos_eval.py" \
-            --base_dir "$BASE_DIR" \
+            --output_dir "$OUTPUT_DIR" \
             --dnsmos_model_dir "$DNSMOS_MODEL_DIR" \
+            --output_csv_name "$OUTPUT_CSV_NAME" \
+            --output_txt_name "$OUTPUT_TXT_NAME" \
             --regen_txt_only
     done
 }

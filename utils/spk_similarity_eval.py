@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 
 OUTPUT_COLUMNS = [
-    "base_dir",
+    "output_dir",
     "dataset",
     "utterance",
     "mixture_utterance",
@@ -38,15 +38,15 @@ def parse_args() -> argparse.Namespace:
         )
     )
     parser.add_argument(
-        "--base_dir",
+        "--output_dir",
         action="append",
         required=True,
-        help="Base output directory. Repeat this argument for multiple model result roots.",
+        help="TSE output directory. Repeat this argument for multiple model result roots.",
     )
     parser.add_argument(
         "--test_set_dir",
         default=None,
-        help="Directory containing *_meta.csv (e.g., ./datasets/REAL-T/PRIMARY). Required unless --regen_txt_only.",
+        help="Directory containing *_meta.csv (e.g., ./datasets/REAL-T/DEV). Required unless --regen_txt_only.",
     )
     parser.add_argument(
         "--mapping_csv",
@@ -76,7 +76,7 @@ def parse_args() -> argparse.Namespace:
         "--max_samples",
         type=int,
         default=None,
-        help="Optional cap on number of processed rows per base_dir.",
+        help="Optional cap on number of processed rows per output_dir.",
     )
     parser.add_argument(
         "--num_workers",
@@ -88,18 +88,18 @@ def parse_args() -> argparse.Namespace:
         "--output_csv_name",
         default=None,
         help=(
-            "Output CSV filename under each base_dir. "
-            "Default: <base_name>_spk_similarity.csv (tse_enrol) or "
-            "<base_name>_spk_similarity_mixture_enrol.csv (mixture_enrol)."
+            "Output CSV filename under each output_dir. "
+            "Default: <output_name>_spk_similarity.csv (tse_enrol) or "
+            "<output_name>_spk_similarity_mixture_enrol.csv (mixture_enrol)."
         ),
     )
     parser.add_argument(
         "--output_txt_name",
         default=None,
         help=(
-            "Output TXT filename under each base_dir. "
-            "Default: <base_name>_spk_similarity_summary.txt (tse_enrol) or "
-            "<base_name>_spk_similarity_mixture_enrol_summary.txt (mixture_enrol)."
+            "Output TXT filename under each output_dir. "
+            "Default: <output_name>_spk_similarity_summary.txt (tse_enrol) or "
+            "<output_name>_spk_similarity_mixture_enrol_summary.txt (mixture_enrol)."
         ),
     )
     parser.add_argument(
@@ -134,7 +134,7 @@ def load_reference_mapping(mapping_csv: Path) -> Dict[str, str]:
 def resolve_estimation_path(
     raw_path: object,
     repo_root: Path,
-    base_dir: Path,
+    output_dir: Path,
     dataset: str,
 ) -> Optional[Path]:
     if raw_path is None or pd.isna(raw_path):
@@ -152,7 +152,7 @@ def resolve_estimation_path(
     if cwd_candidate.exists():
         return cwd_candidate
 
-    fallback = (base_dir / dataset / "wav" / path_obj.name).resolve()
+    fallback = (output_dir / dataset / "wav" / path_obj.name).resolve()
     if fallback.exists():
         return fallback
 
@@ -177,13 +177,30 @@ def get_pair_mode_labels(pair_mode: str) -> Tuple[str, str]:
     raise ValueError(f"Unsupported pair_mode: {pair_mode}")
 
 
-def default_output_names(base_name: str, pair_mode: str) -> Tuple[str, str]:
+def default_output_names(output_name: str, pair_mode: str) -> Tuple[str, str]:
     if pair_mode == "tse_enrol":
-        return f"{base_name}_spk_similarity.csv", f"{base_name}_spk_similarity_summary.txt"
+        return f"{output_name}_spk_similarity.csv", f"{output_name}_spk_similarity_summary.txt"
     return (
-        f"{base_name}_spk_similarity_{pair_mode}.csv",
-        f"{base_name}_spk_similarity_{pair_mode}_summary.txt",
+        f"{output_name}_spk_similarity_{pair_mode}.csv",
+        f"{output_name}_spk_similarity_{pair_mode}_summary.txt",
     )
+
+
+def resolve_existing_csv_path(
+    output_dir: Path,
+    csv_name: str,
+    legacy_csv_name: str,
+) -> Path:
+    primary = output_dir / csv_name
+    candidates = [primary]
+    if "/" in csv_name or "\\" in csv_name:
+        legacy = output_dir / legacy_csv_name
+        if legacy not in candidates:
+            candidates.append(legacy)
+    for path in candidates:
+        if path.exists():
+            return path
+    return primary
 
 
 def get_embedding(
@@ -205,7 +222,7 @@ def get_embedding(
 
 
 def build_dataset_rows(
-    base_dir: Path,
+    output_dir: Path,
     dataset: str,
     test_set_dir: Path,
     reference_map: Dict[str, str],
@@ -220,7 +237,7 @@ def build_dataset_rows(
     rows: List[dict] = []
 
     meta_csv = test_set_dir / f"{dataset}_meta.csv"
-    tse_mapping_csv = base_dir / dataset / "tse_audio_mapping.csv"
+    tse_mapping_csv = output_dir / dataset / "tse_audio_mapping.csv"
     if not meta_csv.exists():
         print(f"[Skip] Missing meta csv: {meta_csv}")
         return rows, processed_so_far
@@ -252,7 +269,7 @@ def build_dataset_rows(
     iterator = tqdm(
         merged.itertuples(index=False),
         total=len(merged),
-        desc=f"{base_dir.name}/{dataset}",
+        desc=f"{output_dir.name}/{dataset}",
         leave=False,
     )
     _, candidate_label = get_pair_mode_labels(pair_mode)
@@ -267,7 +284,7 @@ def build_dataset_rows(
         language = str(item.language) if not pd.isna(item.language) else ""
 
         if pair_mode == "tse_enrol":
-            estimation = resolve_estimation_path(item.path, repo_root, base_dir, dataset)
+            estimation = resolve_estimation_path(item.path, repo_root, output_dir, dataset)
         elif pair_mode == "mixture_enrol":
             estimation = resolve_reference_path(mixture_utt, reference_map)
         else:
@@ -295,7 +312,7 @@ def build_dataset_rows(
 
         rows.append(
             {
-                "base_dir": str(base_dir),
+                "output_dir": str(output_dir),
                 "dataset": dataset,
                 "utterance": utt,
                 "mixture_utterance": mixture_utt,
@@ -522,8 +539,8 @@ def write_summary_txt(
     output_txt.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def run_one_base_dir(
-    base_dir: Path,
+def run_one_output_dir(
+    output_dir: Path,
     test_set_dir: Path,
     reference_map: Dict[str, str],
     speaker_model_cache: Dict[str, object],
@@ -536,13 +553,15 @@ def run_one_base_dir(
     pair_mode: str,
     embedding_cache: Optional[Dict[str, object]] = None,
 ) -> None:
-    if not base_dir.exists():
-        print(f"[Skip] Base dir does not exist: {base_dir}")
+    if not output_dir.exists():
+        print(f"[Skip] Output dir does not exist: {output_dir}")
         return
 
-    dataset_dirs = sorted([p for p in base_dir.iterdir() if p.is_dir()])
+    dataset_dirs = sorted(
+        [p for p in output_dir.iterdir() if p.is_dir() and (p / "tse_audio_mapping.csv").is_file()]
+    )
     if not dataset_dirs:
-        print(f"[Skip] No dataset directories found under {base_dir}")
+        print(f"[Skip] No dataset directories found under {output_dir}")
         return
 
     processed = 0
@@ -556,7 +575,7 @@ def run_one_base_dir(
         speaker_model = get_or_create_speaker_model(args, dataset_lang, speaker_model_cache)
         print(f"[WeSpeaker] dataset={dataset} lang={dataset_lang}")
         rows, processed = build_dataset_rows(
-            base_dir=base_dir,
+            output_dir=output_dir,
             dataset=dataset,
             test_set_dir=test_set_dir,
             reference_map=reference_map,
@@ -574,11 +593,13 @@ def run_one_base_dir(
 
     result_df = pd.DataFrame(all_rows, columns=OUTPUT_COLUMNS)
 
-    default_csv_name, default_txt_name = default_output_names(base_dir.name, pair_mode)
+    default_csv_name, default_txt_name = default_output_names(output_dir.name, pair_mode)
     csv_name = output_csv_name or default_csv_name
     txt_name = output_txt_name or default_txt_name
-    output_csv = base_dir / csv_name
-    output_txt = base_dir / txt_name
+    output_csv = output_dir / csv_name
+    output_txt = output_dir / txt_name
+    output_csv.parent.mkdir(parents=True, exist_ok=True)
+    output_txt.parent.mkdir(parents=True, exist_ok=True)
 
     result_df.to_csv(output_csv, index=False)
     overall, per_dataset_df = summarize(result_df)
@@ -653,7 +674,7 @@ def init_speaker_model(args, model_lang: str):
 
 
 def run_regen_txt_only(
-    base_dir: Path,
+    output_dir: Path,
     dataset_lang_overrides: Dict[str, str],
     default_lang: str,
     output_csv_name: Optional[str],
@@ -661,19 +682,20 @@ def run_regen_txt_only(
     pair_mode: str,
 ) -> None:
     """Read existing CSV and regenerate TXT with Per-language Statistics."""
-    if not base_dir.exists():
-        print(f"[Skip] Base dir does not exist: {base_dir}")
+    if not output_dir.exists():
+        print(f"[Skip] Output dir does not exist: {output_dir}")
         return
 
-    default_csv_name, default_txt_name = default_output_names(base_dir.name, pair_mode)
+    default_csv_name, default_txt_name = default_output_names(output_dir.name, pair_mode)
     csv_name = output_csv_name or default_csv_name
     txt_name = output_txt_name or default_txt_name
-    output_csv = base_dir / csv_name
-    output_txt = base_dir / txt_name
+    output_csv = resolve_existing_csv_path(output_dir, csv_name, default_csv_name)
+    output_txt = output_dir / txt_name
 
     if not output_csv.exists():
         print(f"[Skip] CSV not found: {output_csv}")
         return
+    output_txt.parent.mkdir(parents=True, exist_ok=True)
 
     result_df = pd.read_csv(output_csv)
     overall, per_dataset_df = summarize(result_df)
@@ -740,9 +762,9 @@ def main() -> None:
         print(f"[WeSpeaker] dataset_lang_overrides={dataset_lang_overrides}")
 
     if args.regen_txt_only:
-        for base_dir_raw in args.base_dir:
+        for output_dir_raw in args.output_dir:
             run_regen_txt_only(
-                base_dir=Path(base_dir_raw).resolve(),
+                output_dir=Path(output_dir_raw).resolve(),
                 dataset_lang_overrides=dataset_lang_overrides,
                 default_lang=args.wespeaker_lang,
                 output_csv_name=args.output_csv_name,
@@ -778,13 +800,13 @@ def main() -> None:
 
     speaker_model_cache: Dict[str, object] = {}
 
-    # Share embedding cache across multiple base dirs to avoid recomputing
-    # repeated enrolment embeddings when BASE_DIRS contains several models.
+    # Share embedding cache across multiple output dirs to avoid recomputing
+    # repeated enrolment embeddings when OUTPUT_DIRS contains several models.
     global_embedding_cache: Dict[str, object] = {}
 
-    for base_dir_raw in args.base_dir:
-        run_one_base_dir(
-            base_dir=Path(base_dir_raw).resolve(),
+    for output_dir_raw in args.output_dir:
+        run_one_output_dir(
+            output_dir=Path(output_dir_raw).resolve(),
             test_set_dir=test_set_dir,
             reference_map=reference_map,
             speaker_model_cache=speaker_model_cache,

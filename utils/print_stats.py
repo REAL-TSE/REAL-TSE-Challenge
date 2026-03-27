@@ -103,7 +103,7 @@ def print_avg_wer_or_cer(df: pd.DataFrame) -> None:
 
 def print_SISDR(df: pd.DataFrame) -> None:
     """
-    Print overall SI-SDR and SI-SDRi statistics for the 'Fisher' dataset.
+    Print overall SI-SDR and SI-SDRi statistics by dataset.
 
     The provided DataFrame must contain the following columns:
       - 'source'
@@ -111,7 +111,7 @@ def print_SISDR(df: pd.DataFrame) -> None:
       - 'SI-SDR'
       - 'SI-SDRi'
 
-    Only the 'Fisher' dataset will be considered.
+    The results are grouped by the `source` column.
     """
     
     # Check if all required columns exist
@@ -120,16 +120,14 @@ def print_SISDR(df: pd.DataFrame) -> None:
         if col not in df.columns:
             raise ValueError(f"Missing required column in DataFrame: {col}")
 
-    # Only process if 'Fisher' exists
-    if (df['source'] == 'Fisher').any():
-        print("=== SI-SDR and SI-SDRi Analysis for Fisher ===")
-        fisher_df = df[df['source'] == 'Fisher']
+    if df.empty:
+        print("No evaluation rows found. Skipping SI-SDR/SI-SDRi analysis.")
+        return
 
-        fisher_sdr = fisher_df['SI-SDR'].mean()
-        fisher_sdr_i = fisher_df['SI-SDRi'].mean()
-
-        print(f"\nFisher - Average SI-SDRi: {fisher_sdr_i:.2f} dB")
-        print(f"Fisher - Average SI-SDR : {fisher_sdr:.2f} dB")
-    else:
-        print("No 'Fisher' dataset found. Skipping SI-SDR/SI-SDRi analysis.")
-
+    dataset_stats = (
+        df.groupby('source')[['SI-SDR', 'SI-SDRi']]
+        .mean()
+        .reset_index()
+    )
+    print("=== SI-SDR and SI-SDRi Analysis by Dataset ===")
+    print(dataset_stats)

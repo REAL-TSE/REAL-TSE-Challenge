@@ -5,8 +5,8 @@
 Run the full REAL-T evaluation pipeline from the repo root with one command:
 
 ```bash
-cd REAL-T
-bash ./run_eval.sh --base-dir ./output/PRIMARY/BSRNN --test-set PRIMARY --cuda 0
+cd REAL-TSE-Challenge
+bash ./run_eval.sh --output-dir ./output/DEV/BSRNN --test-set DEV --cuda 0
 ```
 
 `run_eval.sh` now supports top-level modes:
@@ -19,47 +19,46 @@ Examples:
 
 ```bash
 # Run all sub-scripts, then summarize
-bash ./run_eval.sh --base-dir ./output/PRIMARY/BSRNN --test-set PRIMARY --cuda 0 1 2
+bash ./run_eval.sh --output-dir ./output/DEV/BSRNN --test-set DEV --cuda 0 1 2
 
 # Only run all sub-scripts
-bash ./run_eval.sh --base-dir ./output/PRIMARY/BSRNN --test-set PRIMARY --cuda 0 1
+bash ./run_eval.sh --output-dir ./output/DEV/BSRNN --test-set DEV --cuda 0 1
 
 # Only summarize existing CSVs
-bash ./run_eval.sh --base-dir ./output/PRIMARY/BSRNN --test-set PRIMARY --cuda 0 2
+bash ./run_eval.sh --output-dir ./output/DEV/BSRNN --test-set DEV --cuda 0 2
 ```
 
 This sequentially runs:
 
 1. `TER` via `eval/transcribe_and_evaluation.sh`
-2. `TER_ASR2_AED` via `eval/transcribe_and_evaluation_asr2.sh`
-3. `TSE timing` via `eval/vad_and_evaluation.sh`
-4. `speaker similarity (tse_enrol)` via `eval/compute_spk_similarity.sh`
-5. `speaker similarity (mixture_enrol)` via `eval/compute_spk_similarity.sh`
-6. `DNSMOS` via `eval/compute_dnsmos.sh`
-
-Use `--include-fisher` if the target output directory also contains `Fisher`.
+2. `TSE timing` via `eval/vad_and_evaluation.sh`
+3. `speaker similarity (tse_enrol)` via `eval/compute_spk_similarity.sh`
+4. `speaker similarity (mixture_enrol)` via `eval/compute_spk_similarity.sh`
+5. `DNSMOS` via `eval/compute_dnsmos.sh`
 
 ## Shared Conventions
 
 - All commands below are intended to be run from the REAL-T repo root.
-- `BASE_DIRS` is a space-separated list of TSE output roots such as `./output/PRIMARY/BSRNN`.
-- `TEST_SET_DIR` should point to `./datasets/REAL-T/PRIMARY` or `./datasets/REAL-T/BASE`.
-- `DATASETS` defaults to `AliMeeting AISHELL-4 AMI DipCo CHiME6 Fisher`.
+- `OUTPUT_DIRS` is a space-separated list of TSE output roots such as `./output/DEV/BSRNN`.
+- `TEST_SET_DIR` should point to `./datasets/REAL-T/DEV`.
+- `DATASETS` defaults to `AliMeeting AISHELL-4 AMI DipCo CHiME6`.
 - All eval shell scripts source `env_setup.sh` automatically.
 - `run_eval.sh` sets one `CUDA_VISIBLE_DEVICES` value for the entire pipeline and forces ONNX-based stages onto CUDA with `WESPEAKER_PROVIDER=cuda` and `DNSMOS_PROVIDER=cuda`.
-- `run_eval.sh` accepts both absolute and relative `--base-dir` paths.
+- `run_eval.sh` accepts both absolute and relative `--output-dir` paths.
+- `EVAL_METRICS_SUBDIR` controls where detailed metric CSV/TXT files are stored under each `OUTPUT_DIR` (default: `eval_metrics`).
 
-Expected summary outputs under each `BASE_DIR`:
+Expected outputs under each `OUTPUT_DIR`:
 
-- `{BASE_NAME}_TER.csv` and `{BASE_NAME}_TER.txt`
-- `{BASE_NAME}_TER_ASR2_AED.csv` and `{BASE_NAME}_TER_ASR2_AED.txt`
-- `{BASE_NAME}_TSE_TIMING.csv` and `{BASE_NAME}_TSE_TIMING.txt`
-- `{BASE_NAME}_spk_similarity.csv` and `{BASE_NAME}_spk_similarity_summary.txt`
-- `{BASE_NAME}_spk_similarity_mixture_enrol.csv` and `{BASE_NAME}_spk_similarity_mixture_enrol_summary.txt`
-- `{BASE_NAME}_dnsmos.csv` and `{BASE_NAME}_dnsmos.txt`
-- `{BASE_NAME}_summary.txt`
+- Detailed metric files under `${EVAL_METRICS_SUBDIR}`:
+  - `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_TER.csv` and `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_TER.txt`
+  - `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_TSE_TIMING.csv` and `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_TSE_TIMING.txt`
+  - `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_spk_similarity.csv` and `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_spk_similarity_summary.txt`
+  - `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_spk_similarity_mixture_enrol.csv` and `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_spk_similarity_mixture_enrol_summary.txt`
+  - `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_dnsmos.csv` and `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_dnsmos.txt`
+- Aggregated report at `OUTPUT_DIR` root:
+  - `{OUTPUT_NAME}_summary.txt`
 
-`{BASE_NAME}_summary.txt` is the new aggregated report. It is recomputed from CSV files and contains two mean-only tables:
+`{OUTPUT_NAME}_summary.txt` is the new aggregated report. It is recomputed from CSV files and contains two mean-only tables:
 
 - `Mean by dataset`: typically 5 rows for `AISHELL-4 / AMI / AliMeeting / CHiME6 / DipCo`
 - `Mean by language`: typically 2 rows for `en / chs`
@@ -68,7 +67,6 @@ Its columns are organized as grouped headers:
 
 - `TER`
   - `fireredasr-1/whisper`
-  - `fireredasr-2`
 - `SIM`
   - `enrol-mixture`
   - `enrol-tse`
@@ -84,19 +82,62 @@ Its columns are organized as grouped headers:
 
 Current metric sources for the aggregated summary:
 
-- `TER / fireredasr-1/whisper`: mean `wer_or_cer` from `{BASE_NAME}_TER.csv`
-- `TER / fireredasr-2`: mean `wer_or_cer` from `{BASE_NAME}_TER_ASR2_AED.csv`
-- `SIM / enrol-mixture`: mean `speaker_cosine_similarity` from `{BASE_NAME}_spk_similarity_mixture_enrol.csv`
-- `SIM / enrol-tse`: mean `speaker_cosine_similarity` from `{BASE_NAME}_spk_similarity.csv`
-- `DNSMOS / *`: mean `SIG / BAK / OVRL / P808` from `{BASE_NAME}_dnsmos.csv`
-- `RATIO / precision, recall, f1`: mean `precision / recall / f1` from `{BASE_NAME}_TSE_TIMING.csv`
+- `TER / fireredasr-1/whisper`: mean `wer_or_cer` from `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_TER.csv`
+- `SIM / enrol-mixture`: mean `speaker_cosine_similarity` from `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_spk_similarity_mixture_enrol.csv`
+- `SIM / enrol-tse`: mean `speaker_cosine_similarity` from `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_spk_similarity.csv`
+- `DNSMOS / *`: mean `SIG / BAK / OVRL / P808` from `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_dnsmos.csv`
+- `RATIO / precision, recall, f1`: mean `precision / recall / f1` from `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_TSE_TIMING.csv`
 
 ## Prerequisites
 
-Evaluation requires the `REAL-T` dataset and the ASR checkpoint `FireRedASR-AED-L` plus `whisper-large-v2`. To prepare the dataset and standard ASR models:
+Evaluation requires:
+
+- REAL-T dataset
+- ASR model weights: `FireRedASR-AED-L`, `whisper-large-v2`
+- Timing-VAD model weights: `FireRedVAD`
+- DNSMOS ONNX model weights
+
+### Recommended: One-command preparation via `pre.sh`
+
+`pre.sh` now supports downloading dataset + all 4 model groups in one command (all enabled by default):
 
 ```bash
+REALT_DATASET_GDRIVE_FILE_ID=<google_drive_file_id> bash -i ./pre.sh
+```
+
+If you already have a local dataset under `./datasets/REAL-T`, `pre.sh` will skip dataset download and still prepare mappings.
+
+Optional switches (all default to `1`):
+
+- `REALT_PREP_DOWNLOAD_DATASET`
+- `REALT_PREP_DOWNLOAD_FIRERED_ASR`
+- `REALT_PREP_DOWNLOAD_WHISPER`
+- `REALT_PREP_DOWNLOAD_FIRERED_VAD`
+- `REALT_PREP_DOWNLOAD_DNSMOS`
+
+Example: only download dataset + FireRedVAD
+
+```bash
+REALT_DATASET_GDRIVE_FILE_ID=<google_drive_file_id> \
+REALT_PREP_DOWNLOAD_FIRERED_ASR=0 \
+REALT_PREP_DOWNLOAD_WHISPER=0 \
+REALT_PREP_DOWNLOAD_DNSMOS=0 \
 bash -i ./pre.sh
+```
+
+### Optional: Manual downloads (separate from `pre.sh`)
+
+Use the commands below when you want to fetch one component independently.
+
+### FireRedASR-AED-L + Whisper
+
+```bash
+mkdir -p ./FireRedASR/pretrained_models ./whisper/pretrained_models
+python3 ./utils/download_asr_model.py \
+  --zh_repo_id FireRedTeam/FireRedASR-AED-L \
+  --zh_save_dir ./FireRedASR/pretrained_models \
+  --en_repo_id openai/whisper-large-v2 \
+  --en_save_dir ./whisper/pretrained_models
 ```
 
 ### FireRedVAD for Timing Eval
@@ -116,43 +157,25 @@ mkdir -p ./FireRedASR2S/pretrained_models/FireRedVAD
 python -c "from modelscope import snapshot_download; snapshot_download('xukaituo/FireRedVAD', local_dir='./FireRedASR2S/pretrained_models/FireRedVAD')"
 ```
 
-Timing evaluation also requires overlap JSON copied from `REAL-T-Ext-channel-re-seclection`:
+Timing evaluation also requires overlap JSON under `./datasets/REAL-T/json`.
 
-```bash
-mkdir -p ./datasets/REAL-T/json
-cp -r /path/to/REAL-T-Ext-channel-re-seclection/output/REAL-T-datasets/json/* ./datasets/REAL-T/json/
-```
+If your dataset was prepared from the recommended Google Drive archive via `bash -i ./pre.sh`, that directory is already included.
 
-### FireRedASR2-AED for TER_ASR2_AED
-
-`eval/transcribe_and_evaluation_asr2.sh` expects local weights in:
-
-```bash
-./FireRedASR2S/pretrained_models/FireRedASR2-AED
-```
-
-Download with either ModelScope or Hugging Face:
-
-```bash
-pip install -U modelscope
-modelscope download --model xukaituo/FireRedASR2-AED --local_dir ./FireRedASR2S/pretrained_models/FireRedASR2-AED
-```
-
-```bash
-pip install -U "huggingface_hub[cli]"
-huggingface-cli download FireRedTeam/FireRedASR2-AED --local-dir ./FireRedASR2S/pretrained_models/FireRedASR2-AED
-```
-
-The directory must contain:
-
-- `model.pth.tar`
-- `cmvn.ark`
-- `dict.txt`
-- `train_bpe1000.model`
 
 ### DNSMOS
 
 `eval/compute_dnsmos.sh` uses `./DNSMOS` by default. If the ONNX files are missing, mode 1 auto-downloads them unless `DNSMOS_NO_DOWNLOAD=1`.
+
+Manual download option:
+
+```bash
+mkdir -p ./DNSMOS
+python3 - <<'PY'
+from huggingface_hub import hf_hub_download
+for fname in ("sig_bak_ovr.onnx", "model_v8.onnx"):
+    hf_hub_download(repo_id="Vyvo-Research/dnsmos", filename=fname, local_dir="./DNSMOS")
+PY
+```
 
 ## Script Details
 
@@ -173,41 +196,13 @@ bash -i ./eval/transcribe_and_evaluation.sh 1 2
 
 Important env vars:
 
-- `BASE_DIRS`
+- `OUTPUT_DIRS`
 - `TEST_SET_DIR`
-- `INCLUDING_FISHER`
 - `DATASETS`
 - `CHINESE_DATASETS`
 - `ENGLISH_DATASETS`
 - `ASR_DEVICE`
 - `MAPPING_CSV_NAME`
-
-### ASR2 TER
-
-`eval/transcribe_and_evaluation_asr2.sh` uses vendored `FireRedASR2-AED` for all datasets.
-
-```bash
-# Only ASR2 transcription
-bash -i ./eval/transcribe_and_evaluation_asr2.sh 1
-
-# Only evaluation
-bash -i ./eval/transcribe_and_evaluation_asr2.sh 2
-
-# Both
-bash -i ./eval/transcribe_and_evaluation_asr2.sh 1 2
-```
-
-Important env vars:
-
-- `BASE_DIRS`
-- `TEST_SET_DIR`
-- `DATASETS`
-- `MAPPING_CSV_NAME`
-- `FIREREDASR2S_ROOT`
-- `FIREREDASR2_MODEL_DIR`
-- `USE_GPU`
-- `USE_HALF`
-- `ASR_BATCH_SIZE`
 
 ### Timing / VAD Eval
 
@@ -233,7 +228,7 @@ bash -i ./eval/vad_and_evaluation.sh 3
 
 Important env vars:
 
-- `BASE_DIRS`
+- `OUTPUT_DIRS`
 - `TEST_SET_DIR`
 - `DATASETS`
 - `GT_JSON_BASE_DIR`
@@ -246,7 +241,7 @@ Important env vars:
 - `COLLAR`
 - `MATCH_TOLERANCE`
 
-Mode `1` writes `FireRedVAD/vad_segments.jsonl` under each dataset directory. Mode `2` writes `FireRedVAD/label_segments.jsonl` plus `{BASE_NAME}_TSE_TIMING.csv` and `{BASE_NAME}_TSE_TIMING.txt`.
+Mode `1` writes `FireRedVAD/vad_segments.jsonl` under each dataset directory. Mode `2` writes `FireRedVAD/label_segments.jsonl` plus `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_TSE_TIMING.csv` and `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_TSE_TIMING.txt`.
 
 ### Speaker Similarity
 
@@ -265,7 +260,7 @@ SPK_SIM_PAIR_MODE=mixture_enrol bash -i ./eval/compute_spk_similarity.sh 1 2
 
 Important env vars:
 
-- `BASE_DIRS`
+- `OUTPUT_DIRS`
 - `TEST_SET_DIR`
 - `MAPPING_CSV`
 - `WESPEAKER_LANG`
@@ -284,7 +279,7 @@ bash -i ./eval/compute_dnsmos.sh 1 2
 
 Important env vars:
 
-- `BASE_DIRS`
+- `OUTPUT_DIRS`
 - `TEST_SET_DIR`
 - `DNSMOS_MODEL_DIR`
 - `DNSMOS_PROVIDER`
@@ -296,18 +291,19 @@ Important env vars:
 The aggregated report is generated by:
 
 ```bash
-python3 ./utils/aggregate_eval_summary.py --base_dir ./output/PRIMARY/BSRNN
+python3 ./utils/aggregate_eval_summary.py \
+  --output_dir ./output/DEV/BSRNN \
+  --metrics_subdir eval_metrics
 ```
 
 You usually do not need to call it directly, because `run_eval.sh ... 2` already wraps it.
 
-The script expects the following CSV files to exist under `BASE_DIR`:
+The script expects the following CSV files under `OUTPUT_DIR/{metrics_subdir}` by default, and falls back to legacy flat files under `OUTPUT_DIR` if needed:
 
-- `{BASE_NAME}_TER.csv`
-- `{BASE_NAME}_TER_ASR2_AED.csv`
-- `{BASE_NAME}_spk_similarity.csv`
-- `{BASE_NAME}_spk_similarity_mixture_enrol.csv`
-- `{BASE_NAME}_dnsmos.csv`
-- `{BASE_NAME}_TSE_TIMING.csv`
+- `{OUTPUT_NAME}_TER.csv`
+- `{OUTPUT_NAME}_spk_similarity.csv`
+- `{OUTPUT_NAME}_spk_similarity_mixture_enrol.csv`
+- `{OUTPUT_NAME}_dnsmos.csv`
+- `{OUTPUT_NAME}_TSE_TIMING.csv`
 
 If any of them is missing, summary generation will stop with an error so the missing stage is visible immediately.

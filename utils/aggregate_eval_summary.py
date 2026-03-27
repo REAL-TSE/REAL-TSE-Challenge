@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 
-DEFAULT_DATASET_ORDER = ["AISHELL-4", "AMI", "AliMeeting", "CHiME6", "DipCo", "Fisher"]
+DEFAULT_DATASET_ORDER = ["AISHELL-4", "AMI", "AliMeeting", "CHiME6", "DipCo"]
 DEFAULT_LANG_ORDER = ["en", "chs"]
 
 
@@ -18,15 +18,23 @@ def parse_args() -> argparse.Namespace:
         description="Aggregate REAL-T evaluation CSVs into one summary report."
     )
     parser.add_argument(
-        "--base_dir",
+        "--output_dir",
         action="append",
         required=True,
-        help="Base result directory. Repeat for multiple roots.",
+        help="Output result directory. Repeat for multiple roots.",
     )
     parser.add_argument(
         "--output_txt_name",
         default=None,
-        help="Output TXT filename under each base_dir. Default: <base_name>_summary.txt.",
+        help="Output TXT filename under each output_dir. Default: <output_name>_summary.txt.",
+    )
+    parser.add_argument(
+        "--metrics_subdir",
+        default="eval_metrics",
+        help=(
+            "Subdirectory under each output_dir that stores metric CSVs. "
+            "Default: eval_metrics. Falls back to legacy flat paths when files are missing."
+        ),
     )
     return parser.parse_args()
 
@@ -116,10 +124,22 @@ def ordered_names(names: Iterable[str], preferred: Sequence[str]) -> List[str]:
     return ordered
 
 
-def require_file(path: Path) -> Path:
-    if not path.is_file():
-        raise FileNotFoundError(f"Required CSV not found: {path}")
-    return path
+def resolve_metric_csv(output_dir: Path, metrics_subdir: str, filename: str) -> Path:
+    candidates: List[Path] = []
+    subdir = metrics_subdir.strip().strip("/")
+    if subdir and subdir != ".":
+        candidates.append(output_dir / subdir / filename)
+    candidates.append(output_dir / filename)
+
+    for path in candidates:
+        if path.is_file():
+            return path
+
+    raise FileNotFoundError(
+        "Required CSV not found. Tried: {}".format(
+            ", ".join(str(path) for path in candidates)
+        )
+    )
 
 
 def mean_by_group(
@@ -202,19 +222,23 @@ def attach_language(
     return data
 
 
-def summarize_one_base_dir(base_dir: Path, output_txt_name: str | None) -> Path:
-    base_name = base_dir.name
-    output_txt = base_dir / (output_txt_name or f"{base_name}_summary.txt")
+def summarize_one_output_dir(
+    output_dir: Path,
+    output_txt_name: str | None,
+    metrics_subdir: str,
+) -> Path:
+    output_name = output_dir.name
+    output_txt = output_dir / (output_txt_name or f"{output_name}_summary.txt")
 
-    ter_path = require_file(base_dir / f"{base_name}_TER.csv")
-    ter2_path = require_file(base_dir / f"{base_name}_TER_ASR2_AED.csv")
-    sim_path = require_file(base_dir / f"{base_name}_spk_similarity.csv")
-    sim_baseline_path = require_file(base_dir / f"{base_name}_spk_similarity_mixture_enrol.csv")
-    dnsmos_path = require_file(base_dir / f"{base_name}_dnsmos.csv")
-    timing_path = require_file(base_dir / f"{base_name}_TSE_TIMING.csv")
+    ter_path = resolve_metric_csv(output_dir, metrics_subdir, f"{output_name}_TER.csv")
+    sim_path = resolve_metric_csv(output_dir, metrics_subdir, f"{output_name}_spk_similarity.csv")
+    sim_baseline_path = resolve_metric_csv(
+        output_dir, metrics_subdir, f"{output_name}_spk_similarity_mixture_enrol.csv"
+    )
+    dnsmos_path = resolve_metric_csv(output_dir, metrics_subdir, f"{output_name}_dnsmos.csv")
+    timing_path = resolve_metric_csv(output_dir, metrics_subdir, f"{output_name}_TSE_TIMING.csv")
 
     ter_df = pd.read_csv(ter_path)
-    ter2_df = pd.read_csv(ter2_path)
     sim_df = pd.read_csv(sim_path)
     sim_baseline_df = pd.read_csv(sim_baseline_path)
     dnsmos_df = pd.read_csv(dnsmos_path)
@@ -225,10 +249,6 @@ def summarize_one_base_dir(base_dir: Path, output_txt_name: str | None) -> Path:
     ter_work = ter_df.copy()
     ter_work["language"] = ter_work["language"].map(normalize_language)
     ter_work = ter_work.rename(columns={"source": "dataset"})
-
-    ter2_work = ter2_df.copy()
-    ter2_work["language"] = ter2_work["language"].map(normalize_language)
-    ter2_work = ter2_work.rename(columns={"source": "dataset"})
 
     sim_work = sim_df[sim_df["status"] == "ok"].copy()
     sim_work["language"] = sim_work["language"].map(normalize_language)
@@ -253,13 +273,6 @@ def summarize_one_base_dir(base_dir: Path, output_txt_name: str | None) -> Path:
     )
     ter_lang = mean_by_group(ter_work, "language", ["wer_or_cer"]).rename(
         columns={"language": "lang", "wer_or_cer": "ter_whisper"}
-    )
-
-    ter2_dataset = mean_by_group(ter2_work, "dataset", ["wer_or_cer"]).rename(
-        columns={"wer_or_cer": "ter_fireredasr2"}
-    )
-    ter2_lang = mean_by_group(ter2_work, "language", ["wer_or_cer"]).rename(
-        columns={"language": "lang", "wer_or_cer": "ter_fireredasr2"}
     )
 
     sim_dataset = mean_by_group(sim_work, "dataset", ["speaker_cosine_similarity"]).rename(
@@ -303,7 +316,6 @@ def summarize_one_base_dir(base_dir: Path, output_txt_name: str | None) -> Path:
 
     dataset_values = merge_metric_maps(
         to_metric_map(ter_dataset, "dataset", {"ter_whisper": "ter_whisper"}),
-        to_metric_map(ter2_dataset, "dataset", {"ter_fireredasr2": "ter_fireredasr2"}),
         to_metric_map(sim_baseline_dataset, "dataset", {"sim_enrol_mixture": "sim_enrol_mixture"}),
         to_metric_map(sim_dataset, "dataset", {"sim_enrol_tse": "sim_enrol_tse"}),
         to_metric_map(
@@ -329,7 +341,6 @@ def summarize_one_base_dir(base_dir: Path, output_txt_name: str | None) -> Path:
 
     lang_values = merge_metric_maps(
         to_metric_map(ter_lang, "lang", {"ter_whisper": "ter_whisper"}),
-        to_metric_map(ter2_lang, "lang", {"ter_fireredasr2": "ter_fireredasr2"}),
         to_metric_map(sim_baseline_lang, "lang", {"sim_enrol_mixture": "sim_enrol_mixture"}),
         to_metric_map(sim_lang, "lang", {"sim_enrol_tse": "sim_enrol_tse"}),
         to_metric_map(
@@ -358,7 +369,6 @@ def summarize_one_base_dir(base_dir: Path, output_txt_name: str | None) -> Path:
 
     grouped_columns = [
         ("TER", "fireredasr-1/whisper", "ter_whisper"),
-        ("TER", "fireredasr-2", "ter_fireredasr2"),
         ("SIM", "enrol-mixture", "sim_enrol_mixture"),
         ("SIM", "enrol-tse", "sim_enrol_tse"),
         ("DNSMOS", "SIG", "dnsmos_sig"),
@@ -373,7 +383,7 @@ def summarize_one_base_dir(base_dir: Path, output_txt_name: str | None) -> Path:
     lines: List[str] = []
     lines.append("REAL-T Aggregated Evaluation Summary")
     lines.append(f"Generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    lines.append(f"Base dir: {base_dir}")
+    lines.append(f"Output dir: {output_dir}")
     lines.append("")
     lines.append("Mean by dataset")
     lines.extend(build_two_level_table("dataset", dataset_names, grouped_columns, dataset_values))
@@ -387,7 +397,6 @@ def summarize_one_base_dir(base_dir: Path, output_txt_name: str | None) -> Path:
             ["metric", "file"],
             [
                 ["TER", str(ter_path)],
-                ["TER_ASR2_AED", str(ter2_path)],
                 ["SIM enrol-mixture", str(sim_baseline_path)],
                 ["SIM enrol-tse", str(sim_path)],
                 ["DNSMOS", str(dnsmos_path)],
@@ -406,11 +415,15 @@ def summarize_one_base_dir(base_dir: Path, output_txt_name: str | None) -> Path:
 
 def main() -> None:
     args = parse_args()
-    for base_dir_raw in args.base_dir:
-        base_dir = Path(base_dir_raw).resolve()
-        if not base_dir.is_dir():
-            raise SystemExit(f"Base directory not found: {base_dir}")
-        output_txt = summarize_one_base_dir(base_dir, args.output_txt_name)
+    for output_dir_raw in args.output_dir:
+        output_dir = Path(output_dir_raw).resolve()
+        if not output_dir.is_dir():
+            raise SystemExit(f"Output directory not found: {output_dir}")
+        output_txt = summarize_one_output_dir(
+            output_dir=output_dir,
+            output_txt_name=args.output_txt_name,
+            metrics_subdir=args.metrics_subdir,
+        )
         print(f"[Saved] {output_txt}")
 
 
