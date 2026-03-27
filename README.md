@@ -192,9 +192,9 @@ Detailed per-metric instructions, prerequisites, and optional visualization are 
 - Use scripts under `./eval/` only when you want to run individual evaluation sub-steps manually.
 
 ## 4. Results
-[ckpt](https://drive.google.com/file/d/1M4UqK2A2EeHmQ0pCevYqBgaYn3RvklgC/view?usp=drive_link)
 
 We evaluate four BSRNN-based TSE models with different speaker information fusion strategies (speaker embedding vs. time-frequency featuremap interaction) and causality (causal vs. non-causal), all trained on Libri2Mix-100. The table below compares their performance on the simulated dev sets.
+
 
 <div align="center">
 
@@ -206,6 +206,16 @@ We evaluate four BSRNN-based TSE models with different speaker information fusio
 | BSRNN_TFMAP_CAUSAL |                     0.744 |               0.506 |           0.535 |       1.99 |       1.72 |        1.56 |        2.76 |   0.779 |   0.952 |    0.844 |
 
 </div>
+The checkpoints is availibale at [ckpt](https://drive.google.com/file/d/1M4UqK2A2EeHmQ0pCevYqBgaYn3RvklgC/view?usp=drive_link). The directory structure for the pretrained models in the REAL-T project is suggested to be:
+
+REAL-T/
+├── pretrained/
+│ ├── pak2/
+│ ├── spk_emb_100/
+│ ├── spk_emb_causal_100/
+│ ├── tfmap_context_100/
+│ ├── tfmap_context_causal_100/
+│ └── tfmap_context_Vox1/
 
 ## 5. Citation
 
