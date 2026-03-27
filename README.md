@@ -207,6 +207,7 @@ We evaluate four BSRNN-based TSE models with different speaker information fusio
 
 </div>
 
+
 The checkpoints is availibale at [Google Drive](https://drive.google.com/uc?export=download&id=1M4UqK2A2EeHmQ0pCevYqBgaYn3RvklgC) . The directory structure for the pretrained models in the REAL-T project is suggested to be:
 
 ```
@@ -215,8 +216,7 @@ REAL-T/
 │ ├── spk_emb_100/
 │ ├── spk_emb_causal_100/
 │ ├── tfmap_context_100/
-│ ├── tfmap_context_causal_100/
-│ └── tfmap_context_Vox1/
+│ └── tfmap_context_causal_100/
 ```
 
 ## 5. Citation
