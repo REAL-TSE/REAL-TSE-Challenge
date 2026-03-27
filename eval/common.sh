@@ -6,14 +6,13 @@ REAL_T_ROOT="$(cd "${EVAL_DIR}/.." && pwd)"
 source "${REAL_T_ROOT}/env_setup.sh"
 
 init_eval_common() {
-    local default_base_dirs="${1:-}"
+    local default_output_dirs="${1:-}"
 
-    TEST_SET_DIR="${TEST_SET_DIR:-./datasets/REAL-T/PRIMARY}"
-    INCLUDING_FISHER="${INCLUDING_FISHER:-False}"
+    TEST_SET_DIR="${TEST_SET_DIR:-./datasets/REAL-T/DEV}"
     MAPPING_CSV_NAME="${MAPPING_CSV_NAME:-tse_audio_mapping.csv}"
     EVAL_METRICS_SUBDIR="${EVAL_METRICS_SUBDIR:-eval_metrics}"
     USE_GPU="${USE_GPU:-1}"
-    DATASETS="${DATASETS:-AliMeeting AISHELL-4 AMI DipCo CHiME6 Fisher}"
+    DATASETS="${DATASETS:-AliMeeting AISHELL-4 AMI DipCo CHiME6}"
 
     EVAL_METRICS_SUBDIR="${EVAL_METRICS_SUBDIR#/}"
     EVAL_METRICS_SUBDIR="${EVAL_METRICS_SUBDIR%/}"
@@ -21,28 +20,28 @@ init_eval_common() {
         EVAL_METRICS_SUBDIR=""
     fi
 
-    if [ -z "${BASE_DIRS:-}" ]; then
-        BASE_DIRS="${default_base_dirs}"
+    if [ -z "${OUTPUT_DIRS:-}" ]; then
+        OUTPUT_DIRS="${default_output_dirs}"
     fi
 
-    read -r -a BASE_DIR_LIST <<< "${BASE_DIRS:-}"
-    if [ "${#BASE_DIR_LIST[@]}" -eq 0 ]; then
-        echo "No BASE_DIRS provided."
+    read -r -a OUTPUT_DIR_LIST <<< "${OUTPUT_DIRS:-}"
+    if [ "${#OUTPUT_DIR_LIST[@]}" -eq 0 ]; then
+        echo "No OUTPUT_DIRS provided."
         exit 1
     fi
 
-    # Normalize base dirs to their physical paths so symlinked output roots
+    # Normalize output dirs to their physical paths so symlinked output roots
     # work the same way as regular directories across all eval scripts.
-    local normalized_base_dirs=()
-    local base_dir=""
-    for base_dir in "${BASE_DIR_LIST[@]}"; do
-        if [ ! -d "$base_dir" ]; then
-            echo "Base directory not found: $base_dir"
+    local normalized_output_dirs=()
+    local output_dir=""
+    for output_dir in "${OUTPUT_DIR_LIST[@]}"; do
+        if [ ! -d "$output_dir" ]; then
+            echo "Output directory not found: $output_dir"
             exit 1
         fi
-        normalized_base_dirs+=("$(cd "$base_dir" && pwd -P)")
+        normalized_output_dirs+=("$(cd "$output_dir" && pwd -P)")
     done
-    BASE_DIR_LIST=("${normalized_base_dirs[@]}")
+    OUTPUT_DIR_LIST=("${normalized_output_dirs[@]}")
 
     read -r -a DATASET_LIST <<< "${DATASETS}"
     if [ "${#DATASET_LIST[@]}" -eq 0 ]; then
@@ -57,15 +56,15 @@ dataset_enabled() {
 }
 
 list_dataset_dirs() {
-    local base_dir="$1"
-    find -L "$base_dir" -maxdepth 1 -mindepth 1 -type d | sort
+    local output_dir="$1"
+    find -L "$output_dir" -maxdepth 1 -mindepth 1 -type d | sort
 }
 
 eval_metrics_dir() {
-    local base_dir="$1"
+    local output_dir="$1"
     if [ -z "${EVAL_METRICS_SUBDIR:-}" ]; then
-        echo "$base_dir"
+        echo "$output_dir"
         return
     fi
-    echo "${base_dir}/${EVAL_METRICS_SUBDIR}"
+    echo "${output_dir}/${EVAL_METRICS_SUBDIR}"
 }

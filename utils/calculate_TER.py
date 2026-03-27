@@ -7,8 +7,7 @@ from asr_metrics import normalizer_for_transcript
 
 def evaluate_TER(
     full_dir: str,
-    predicted_path_mapping: Dict[str, str],
-    include_fisher: bool = False
+    predicted_path_mapping: Dict[str, str]
 ) -> pd.DataFrame:
 
     utterance_to_predicted = {
@@ -16,12 +15,12 @@ def evaluate_TER(
         for dataset, path in predicted_path_mapping.items()
     }
 
-    # Load all CSV files, filter based on include_fisher
+    # Load all metadata CSV files under the evaluation directory.
     merged_df = pd.concat(
         [
             pd.read_csv(os.path.join(full_dir, f))
             for f in os.listdir(full_dir)
-            if f.endswith(".csv") and (include_fisher or not f.startswith("Fisher"))
+            if f.endswith(".csv")
         ],
         ignore_index=True
     )

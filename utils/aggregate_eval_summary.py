@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 
-DEFAULT_DATASET_ORDER = ["AISHELL-4", "AMI", "AliMeeting", "CHiME6", "DipCo", "Fisher"]
+DEFAULT_DATASET_ORDER = ["AISHELL-4", "AMI", "AliMeeting", "CHiME6", "DipCo"]
 DEFAULT_LANG_ORDER = ["en", "chs"]
 
 
@@ -18,21 +18,21 @@ def parse_args() -> argparse.Namespace:
         description="Aggregate REAL-T evaluation CSVs into one summary report."
     )
     parser.add_argument(
-        "--base_dir",
+        "--output_dir",
         action="append",
         required=True,
-        help="Base result directory. Repeat for multiple roots.",
+        help="Output result directory. Repeat for multiple roots.",
     )
     parser.add_argument(
         "--output_txt_name",
         default=None,
-        help="Output TXT filename under each base_dir. Default: <base_name>_summary.txt.",
+        help="Output TXT filename under each output_dir. Default: <output_name>_summary.txt.",
     )
     parser.add_argument(
         "--metrics_subdir",
         default="eval_metrics",
         help=(
-            "Subdirectory under each base_dir that stores metric CSVs. "
+            "Subdirectory under each output_dir that stores metric CSVs. "
             "Default: eval_metrics. Falls back to legacy flat paths when files are missing."
         ),
     )
@@ -124,12 +124,12 @@ def ordered_names(names: Iterable[str], preferred: Sequence[str]) -> List[str]:
     return ordered
 
 
-def resolve_metric_csv(base_dir: Path, metrics_subdir: str, filename: str) -> Path:
+def resolve_metric_csv(output_dir: Path, metrics_subdir: str, filename: str) -> Path:
     candidates: List[Path] = []
     subdir = metrics_subdir.strip().strip("/")
     if subdir and subdir != ".":
-        candidates.append(base_dir / subdir / filename)
-    candidates.append(base_dir / filename)
+        candidates.append(output_dir / subdir / filename)
+    candidates.append(output_dir / filename)
 
     for path in candidates:
         if path.is_file():
@@ -222,21 +222,21 @@ def attach_language(
     return data
 
 
-def summarize_one_base_dir(
-    base_dir: Path,
+def summarize_one_output_dir(
+    output_dir: Path,
     output_txt_name: str | None,
     metrics_subdir: str,
 ) -> Path:
-    base_name = base_dir.name
-    output_txt = base_dir / (output_txt_name or f"{base_name}_summary.txt")
+    output_name = output_dir.name
+    output_txt = output_dir / (output_txt_name or f"{output_name}_summary.txt")
 
-    ter_path = resolve_metric_csv(base_dir, metrics_subdir, f"{base_name}_TER.csv")
-    sim_path = resolve_metric_csv(base_dir, metrics_subdir, f"{base_name}_spk_similarity.csv")
+    ter_path = resolve_metric_csv(output_dir, metrics_subdir, f"{output_name}_TER.csv")
+    sim_path = resolve_metric_csv(output_dir, metrics_subdir, f"{output_name}_spk_similarity.csv")
     sim_baseline_path = resolve_metric_csv(
-        base_dir, metrics_subdir, f"{base_name}_spk_similarity_mixture_enrol.csv"
+        output_dir, metrics_subdir, f"{output_name}_spk_similarity_mixture_enrol.csv"
     )
-    dnsmos_path = resolve_metric_csv(base_dir, metrics_subdir, f"{base_name}_dnsmos.csv")
-    timing_path = resolve_metric_csv(base_dir, metrics_subdir, f"{base_name}_TSE_TIMING.csv")
+    dnsmos_path = resolve_metric_csv(output_dir, metrics_subdir, f"{output_name}_dnsmos.csv")
+    timing_path = resolve_metric_csv(output_dir, metrics_subdir, f"{output_name}_TSE_TIMING.csv")
 
     ter_df = pd.read_csv(ter_path)
     sim_df = pd.read_csv(sim_path)
@@ -383,7 +383,7 @@ def summarize_one_base_dir(
     lines: List[str] = []
     lines.append("REAL-T Aggregated Evaluation Summary")
     lines.append(f"Generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    lines.append(f"Base dir: {base_dir}")
+    lines.append(f"Output dir: {output_dir}")
     lines.append("")
     lines.append("Mean by dataset")
     lines.extend(build_two_level_table("dataset", dataset_names, grouped_columns, dataset_values))
@@ -415,12 +415,12 @@ def summarize_one_base_dir(
 
 def main() -> None:
     args = parse_args()
-    for base_dir_raw in args.base_dir:
-        base_dir = Path(base_dir_raw).resolve()
-        if not base_dir.is_dir():
-            raise SystemExit(f"Base directory not found: {base_dir}")
-        output_txt = summarize_one_base_dir(
-            base_dir=base_dir,
+    for output_dir_raw in args.output_dir:
+        output_dir = Path(output_dir_raw).resolve()
+        if not output_dir.is_dir():
+            raise SystemExit(f"Output directory not found: {output_dir}")
+        output_txt = summarize_one_output_dir(
+            output_dir=output_dir,
             output_txt_name=args.output_txt_name,
             metrics_subdir=args.metrics_subdir,
         )

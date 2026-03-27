@@ -10,11 +10,11 @@ EVAL_SCRIPT="${REAL_T_ROOT}/utils/asr_evaluation.py"
 CHINESE_ASR_MODEL="${CHINESE_ASR_MODEL:-FireRedASR-AED-L}"
 ENGLISH_ASR_MODEL="${ENGLISH_ASR_MODEL:-whisper-large-v2}"
 CHINESE_DATASETS="${CHINESE_DATASETS:-AliMeeting AISHELL-4}"
-ENGLISH_DATASETS="${ENGLISH_DATASETS:-AMI DipCo CHiME6 Fisher}"
+ENGLISH_DATASETS="${ENGLISH_DATASETS:-AMI DipCo CHiME6}"
 ASR_DEVICE="${ASR_DEVICE:-cuda:0}"
 ASR_MAX_SAMPLES="${ASR_MAX_SAMPLES:-}"
 
-init_eval_common "./output/PRIMARY/bsrnn_vox1"
+init_eval_common "./output/DEV/bsrnn_vox1"
 
 MODES=("$@")
 if [ ${#MODES[@]} -eq 0 ]; then
@@ -23,11 +23,11 @@ if [ ${#MODES[@]} -eq 0 ]; then
 fi
 
 run_asr() {
-    for BASE_DIR in "${BASE_DIR_LIST[@]}"; do
-        echo "Processing base directory: $BASE_DIR"
-        mapfile -t dataset_dirs < <(list_dataset_dirs "$BASE_DIR")
+    for OUTPUT_DIR in "${OUTPUT_DIR_LIST[@]}"; do
+        echo "Processing output directory: $OUTPUT_DIR"
+        mapfile -t dataset_dirs < <(list_dataset_dirs "$OUTPUT_DIR")
         if [ ${#dataset_dirs[@]} -eq 0 ]; then
-            echo "No datasets found under $BASE_DIR, skipping."
+            echo "No datasets found under $OUTPUT_DIR, skipping."
             continue
         fi
 
@@ -81,19 +81,14 @@ run_asr() {
 }
 
 run_asr_evaluation() {
-    for BASE_DIR in "${BASE_DIR_LIST[@]}"; do
-        echo "Running TER evaluation for base directory: $BASE_DIR"
-        BASE_NAME="$(basename "$BASE_DIR")"
-        METRICS_DIR="$(eval_metrics_dir "$BASE_DIR")"
+    for OUTPUT_DIR in "${OUTPUT_DIR_LIST[@]}"; do
+        echo "Running TER evaluation for output directory: $OUTPUT_DIR"
+        OUTPUT_NAME="$(basename "$OUTPUT_DIR")"
+        METRICS_DIR="$(eval_metrics_dir "$OUTPUT_DIR")"
         mkdir -p "$METRICS_DIR"
-        if [ "$INCLUDING_FISHER" = "True" ]; then
-            SUFFIX="_including_fisher"
-        else
-            SUFFIX=""
-        fi
 
-        RESULT_TXT="${METRICS_DIR}/${BASE_NAME}_TER${SUFFIX}.txt"
-        RESULT_CSV="${METRICS_DIR}/${BASE_NAME}_TER${SUFFIX}.csv"
+        RESULT_TXT="${METRICS_DIR}/${OUTPUT_NAME}_TER.txt"
+        RESULT_CSV="${METRICS_DIR}/${OUTPUT_NAME}_TER.csv"
 
         CMD=(
             env
@@ -102,13 +97,10 @@ run_asr_evaluation() {
             python3 "$EVAL_SCRIPT"
             --ground_truth_dir "$TEST_SET_DIR"
             --save_path "$RESULT_CSV"
-            --predicted_dir "$BASE_DIR"
+            --predicted_dir "$OUTPUT_DIR"
             --chinese_asr_model "$CHINESE_ASR_MODEL"
             --english_asr_model "$ENGLISH_ASR_MODEL"
         )
-        if [ "$INCLUDING_FISHER" = "True" ]; then
-            CMD+=(--include_fisher)
-        fi
 
         "${CMD[@]}" > "$RESULT_TXT"
         echo "Evaluation completed:"

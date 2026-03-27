@@ -24,14 +24,14 @@ def main(args):
     tse_mapping_dict = dict(zip(tse_mapping['utterance'], tse_mapping['path']))
 
     # Load evaluation metadata
-    fisher_df = pd.read_csv(args.eval_metadata_path)
+    eval_df = pd.read_csv(args.eval_metadata_path)
 
     # Prepare save dataframe, initialize with +infinity
-    save_df = fisher_df.copy()
+    save_df = eval_df.copy()
     save_df['SI-SDR']  = float('inf')
     save_df['SI-SDRi'] = float('inf')
 
-    for index, row in tqdm(fisher_df.iterrows(), total=len(fisher_df), desc="Evaluating"):
+    for index, row in tqdm(eval_df.iterrows(), total=len(eval_df), desc="Evaluating"):
         mix_utt = row['mixture_utterance']
         enrol_utt = row['enrolment_speakers_utterance']
         speaker = row['speaker']
@@ -77,7 +77,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Evaluate Target Speaker Extraction results.")
     parser.add_argument("--eval_metadata_path", type=str, required=True,
-                        help="Path to Fisher_meta.csv (absolute path).")
+                        help="Path to the evaluation metadata CSV (absolute path).")
     parser.add_argument("--tse_mapping_path", type=str, required=True,
                         help="Path to TSE result mapping CSV (absolute path).")
     parser.add_argument("--save_path", type=str, required=True,

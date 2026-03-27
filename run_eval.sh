@@ -9,26 +9,25 @@ source "${REAL_T_ROOT}/env_setup.sh"
 usage() {
     cat <<'EOF'
 Usage:
-  bash ./run_eval.sh --base-dir <path> --test-set PRIMARY|BASE --cuda <id> [--include-fisher] [1] [2]
+  bash ./run_eval.sh --output-dir <path> --test-set DEV --cuda <id> [1] [2]
 
 Modes:
   1    Run all evaluation sub-scripts
-  2    Aggregate existing CSV results into <base_name>_summary.txt
+  2    Aggregate existing CSV results into <output_name>_summary.txt
 
 If no mode is provided, the default is: 1 2
 EOF
 }
 
-BASE_DIR=""
+OUTPUT_DIR=""
 TEST_SET=""
 CUDA_ID=""
-INCLUDING_FISHER_FLAG="False"
 MODES=()
 
 while [ $# -gt 0 ]; do
     case "$1" in
-        --base-dir)
-            BASE_DIR="${2:-}"
+        --output-dir)
+            OUTPUT_DIR="${2:-}"
             shift 2
             ;;
         --test-set)
@@ -38,10 +37,6 @@ while [ $# -gt 0 ]; do
         --cuda)
             CUDA_ID="${2:-}"
             shift 2
-            ;;
-        --include-fisher)
-            INCLUDING_FISHER_FLAG="True"
-            shift
             ;;
         -h|--help)
             usage
@@ -66,22 +61,22 @@ for mode in "${MODES[@]}"; do
     fi
 done
 
-if [ -z "$BASE_DIR" ] || [ -z "$TEST_SET" ] || [ -z "$CUDA_ID" ]; then
+if [ -z "$OUTPUT_DIR" ] || [ -z "$TEST_SET" ] || [ -z "$CUDA_ID" ]; then
     usage
     exit 1
 fi
 
-if [[ "$BASE_DIR" != /* ]]; then
-    BASE_DIR="$(cd "$ORIG_CWD" && cd "$(dirname "$BASE_DIR")" && pwd)/$(basename "$BASE_DIR")"
+if [[ "$OUTPUT_DIR" != /* ]]; then
+    OUTPUT_DIR="$(cd "$ORIG_CWD" && cd "$(dirname "$OUTPUT_DIR")" && pwd)/$(basename "$OUTPUT_DIR")"
 fi
 
-if [ "$TEST_SET" != "PRIMARY" ] && [ "$TEST_SET" != "BASE" ]; then
-    echo "--test-set must be PRIMARY or BASE."
+if [ "$TEST_SET" != "DEV" ]; then
+    echo "--test-set must be DEV."
     exit 1
 fi
 
-if [ ! -d "$BASE_DIR" ]; then
-    echo "Base directory not found: $BASE_DIR"
+if [ ! -d "$OUTPUT_DIR" ]; then
+    echo "Output directory not found: $OUTPUT_DIR"
     exit 1
 fi
 
@@ -92,9 +87,8 @@ if [ ! -d "$TEST_SET_DIR" ]; then
 fi
 
 export CUDA_VISIBLE_DEVICES="$CUDA_ID"
-export BASE_DIRS="$BASE_DIR"
+export OUTPUT_DIRS="$OUTPUT_DIR"
 export TEST_SET_DIR
-export INCLUDING_FISHER="$INCLUDING_FISHER_FLAG"
 export USE_GPU=1
 export ASR_DEVICE="cuda:0"
 export WESPEAKER_PROVIDER="cuda"
@@ -111,10 +105,9 @@ run_stage() {
 
 run_pipeline() {
     echo "Running full eval pipeline"
-    echo "  base_dir : $BASE_DIR"
+    echo "  output_dir : $OUTPUT_DIR"
     echo "  test_set : $TEST_SET"
     echo "  cuda     : $CUDA_VISIBLE_DEVICES"
-    echo "  fisher   : $INCLUDING_FISHER"
     echo "  metrics  : ${EVAL_METRICS_SUBDIR:-.}"
 
     run_stage "TER" bash "${REAL_T_ROOT}/eval/transcribe_and_evaluation.sh" 1 2
@@ -131,7 +124,7 @@ run_summary() {
     echo
     echo "===== AGGREGATED SUMMARY ====="
     python3 "${REAL_T_ROOT}/utils/aggregate_eval_summary.py" \
-        --base_dir "$BASE_DIR" \
+        --output_dir "$OUTPUT_DIR" \
         --metrics_subdir "${EVAL_METRICS_SUBDIR:-}"
     echo "Aggregated summary completed successfully."
 }

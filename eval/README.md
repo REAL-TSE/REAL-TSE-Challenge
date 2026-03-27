@@ -6,7 +6,7 @@ Run the full REAL-T evaluation pipeline from the repo root with one command:
 
 ```bash
 cd REAL-TSE-Challenge
-bash ./run_eval.sh --base-dir ./output/PRIMARY/BSRNN --test-set PRIMARY --cuda 0
+bash ./run_eval.sh --output-dir ./output/DEV/BSRNN --test-set DEV --cuda 0
 ```
 
 `run_eval.sh` now supports top-level modes:
@@ -19,13 +19,13 @@ Examples:
 
 ```bash
 # Run all sub-scripts, then summarize
-bash ./run_eval.sh --base-dir ./output/PRIMARY/BSRNN --test-set PRIMARY --cuda 0 1 2
+bash ./run_eval.sh --output-dir ./output/DEV/BSRNN --test-set DEV --cuda 0 1 2
 
 # Only run all sub-scripts
-bash ./run_eval.sh --base-dir ./output/PRIMARY/BSRNN --test-set PRIMARY --cuda 0 1
+bash ./run_eval.sh --output-dir ./output/DEV/BSRNN --test-set DEV --cuda 0 1
 
 # Only summarize existing CSVs
-bash ./run_eval.sh --base-dir ./output/PRIMARY/BSRNN --test-set PRIMARY --cuda 0 2
+bash ./run_eval.sh --output-dir ./output/DEV/BSRNN --test-set DEV --cuda 0 2
 ```
 
 This sequentially runs:
@@ -36,31 +36,29 @@ This sequentially runs:
 4. `speaker similarity (mixture_enrol)` via `eval/compute_spk_similarity.sh`
 5. `DNSMOS` via `eval/compute_dnsmos.sh`
 
-Use `--include-fisher` if the target output directory also contains `Fisher`.
-
 ## Shared Conventions
 
 - All commands below are intended to be run from the REAL-T repo root.
-- `BASE_DIRS` is a space-separated list of TSE output roots such as `./output/PRIMARY/BSRNN`.
-- `TEST_SET_DIR` should point to `./datasets/REAL-T/PRIMARY` or `./datasets/REAL-T/BASE`.
-- `DATASETS` defaults to `AliMeeting AISHELL-4 AMI DipCo CHiME6 Fisher`.
+- `OUTPUT_DIRS` is a space-separated list of TSE output roots such as `./output/DEV/BSRNN`.
+- `TEST_SET_DIR` should point to `./datasets/REAL-T/DEV`.
+- `DATASETS` defaults to `AliMeeting AISHELL-4 AMI DipCo CHiME6`.
 - All eval shell scripts source `env_setup.sh` automatically.
 - `run_eval.sh` sets one `CUDA_VISIBLE_DEVICES` value for the entire pipeline and forces ONNX-based stages onto CUDA with `WESPEAKER_PROVIDER=cuda` and `DNSMOS_PROVIDER=cuda`.
-- `run_eval.sh` accepts both absolute and relative `--base-dir` paths.
-- `EVAL_METRICS_SUBDIR` controls where detailed metric CSV/TXT files are stored under each `BASE_DIR` (default: `eval_metrics`).
+- `run_eval.sh` accepts both absolute and relative `--output-dir` paths.
+- `EVAL_METRICS_SUBDIR` controls where detailed metric CSV/TXT files are stored under each `OUTPUT_DIR` (default: `eval_metrics`).
 
-Expected outputs under each `BASE_DIR`:
+Expected outputs under each `OUTPUT_DIR`:
 
 - Detailed metric files under `${EVAL_METRICS_SUBDIR}`:
-  - `${EVAL_METRICS_SUBDIR}/{BASE_NAME}_TER.csv` and `${EVAL_METRICS_SUBDIR}/{BASE_NAME}_TER.txt`
-  - `${EVAL_METRICS_SUBDIR}/{BASE_NAME}_TSE_TIMING.csv` and `${EVAL_METRICS_SUBDIR}/{BASE_NAME}_TSE_TIMING.txt`
-  - `${EVAL_METRICS_SUBDIR}/{BASE_NAME}_spk_similarity.csv` and `${EVAL_METRICS_SUBDIR}/{BASE_NAME}_spk_similarity_summary.txt`
-  - `${EVAL_METRICS_SUBDIR}/{BASE_NAME}_spk_similarity_mixture_enrol.csv` and `${EVAL_METRICS_SUBDIR}/{BASE_NAME}_spk_similarity_mixture_enrol_summary.txt`
-  - `${EVAL_METRICS_SUBDIR}/{BASE_NAME}_dnsmos.csv` and `${EVAL_METRICS_SUBDIR}/{BASE_NAME}_dnsmos.txt`
-- Aggregated report at `BASE_DIR` root:
-  - `{BASE_NAME}_summary.txt`
+  - `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_TER.csv` and `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_TER.txt`
+  - `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_TSE_TIMING.csv` and `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_TSE_TIMING.txt`
+  - `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_spk_similarity.csv` and `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_spk_similarity_summary.txt`
+  - `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_spk_similarity_mixture_enrol.csv` and `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_spk_similarity_mixture_enrol_summary.txt`
+  - `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_dnsmos.csv` and `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_dnsmos.txt`
+- Aggregated report at `OUTPUT_DIR` root:
+  - `{OUTPUT_NAME}_summary.txt`
 
-`{BASE_NAME}_summary.txt` is the new aggregated report. It is recomputed from CSV files and contains two mean-only tables:
+`{OUTPUT_NAME}_summary.txt` is the new aggregated report. It is recomputed from CSV files and contains two mean-only tables:
 
 - `Mean by dataset`: typically 5 rows for `AISHELL-4 / AMI / AliMeeting / CHiME6 / DipCo`
 - `Mean by language`: typically 2 rows for `en / chs`
@@ -84,11 +82,11 @@ Its columns are organized as grouped headers:
 
 Current metric sources for the aggregated summary:
 
-- `TER / fireredasr-1/whisper`: mean `wer_or_cer` from `${EVAL_METRICS_SUBDIR}/{BASE_NAME}_TER.csv`
-- `SIM / enrol-mixture`: mean `speaker_cosine_similarity` from `${EVAL_METRICS_SUBDIR}/{BASE_NAME}_spk_similarity_mixture_enrol.csv`
-- `SIM / enrol-tse`: mean `speaker_cosine_similarity` from `${EVAL_METRICS_SUBDIR}/{BASE_NAME}_spk_similarity.csv`
-- `DNSMOS / *`: mean `SIG / BAK / OVRL / P808` from `${EVAL_METRICS_SUBDIR}/{BASE_NAME}_dnsmos.csv`
-- `RATIO / precision, recall, f1`: mean `precision / recall / f1` from `${EVAL_METRICS_SUBDIR}/{BASE_NAME}_TSE_TIMING.csv`
+- `TER / fireredasr-1/whisper`: mean `wer_or_cer` from `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_TER.csv`
+- `SIM / enrol-mixture`: mean `speaker_cosine_similarity` from `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_spk_similarity_mixture_enrol.csv`
+- `SIM / enrol-tse`: mean `speaker_cosine_similarity` from `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_spk_similarity.csv`
+- `DNSMOS / *`: mean `SIG / BAK / OVRL / P808` from `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_dnsmos.csv`
+- `RATIO / precision, recall, f1`: mean `precision / recall / f1` from `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_TSE_TIMING.csv`
 
 ## Prerequisites
 
@@ -198,9 +196,8 @@ bash -i ./eval/transcribe_and_evaluation.sh 1 2
 
 Important env vars:
 
-- `BASE_DIRS`
+- `OUTPUT_DIRS`
 - `TEST_SET_DIR`
-- `INCLUDING_FISHER`
 - `DATASETS`
 - `CHINESE_DATASETS`
 - `ENGLISH_DATASETS`
@@ -231,7 +228,7 @@ bash -i ./eval/vad_and_evaluation.sh 3
 
 Important env vars:
 
-- `BASE_DIRS`
+- `OUTPUT_DIRS`
 - `TEST_SET_DIR`
 - `DATASETS`
 - `GT_JSON_BASE_DIR`
@@ -244,7 +241,7 @@ Important env vars:
 - `COLLAR`
 - `MATCH_TOLERANCE`
 
-Mode `1` writes `FireRedVAD/vad_segments.jsonl` under each dataset directory. Mode `2` writes `FireRedVAD/label_segments.jsonl` plus `${EVAL_METRICS_SUBDIR}/{BASE_NAME}_TSE_TIMING.csv` and `${EVAL_METRICS_SUBDIR}/{BASE_NAME}_TSE_TIMING.txt`.
+Mode `1` writes `FireRedVAD/vad_segments.jsonl` under each dataset directory. Mode `2` writes `FireRedVAD/label_segments.jsonl` plus `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_TSE_TIMING.csv` and `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_TSE_TIMING.txt`.
 
 ### Speaker Similarity
 
@@ -263,7 +260,7 @@ SPK_SIM_PAIR_MODE=mixture_enrol bash -i ./eval/compute_spk_similarity.sh 1 2
 
 Important env vars:
 
-- `BASE_DIRS`
+- `OUTPUT_DIRS`
 - `TEST_SET_DIR`
 - `MAPPING_CSV`
 - `WESPEAKER_LANG`
@@ -282,7 +279,7 @@ bash -i ./eval/compute_dnsmos.sh 1 2
 
 Important env vars:
 
-- `BASE_DIRS`
+- `OUTPUT_DIRS`
 - `TEST_SET_DIR`
 - `DNSMOS_MODEL_DIR`
 - `DNSMOS_PROVIDER`
@@ -295,18 +292,18 @@ The aggregated report is generated by:
 
 ```bash
 python3 ./utils/aggregate_eval_summary.py \
-  --base_dir ./output/PRIMARY/BSRNN \
+  --output_dir ./output/DEV/BSRNN \
   --metrics_subdir eval_metrics
 ```
 
 You usually do not need to call it directly, because `run_eval.sh ... 2` already wraps it.
 
-The script expects the following CSV files under `BASE_DIR/{metrics_subdir}` by default, and falls back to legacy flat files under `BASE_DIR` if needed:
+The script expects the following CSV files under `OUTPUT_DIR/{metrics_subdir}` by default, and falls back to legacy flat files under `OUTPUT_DIR` if needed:
 
-- `{BASE_NAME}_TER.csv`
-- `{BASE_NAME}_spk_similarity.csv`
-- `{BASE_NAME}_spk_similarity_mixture_enrol.csv`
-- `{BASE_NAME}_dnsmos.csv`
-- `{BASE_NAME}_TSE_TIMING.csv`
+- `{OUTPUT_NAME}_TER.csv`
+- `{OUTPUT_NAME}_spk_similarity.csv`
+- `{OUTPUT_NAME}_spk_similarity_mixture_enrol.csv`
+- `{OUTPUT_NAME}_dnsmos.csv`
+- `{OUTPUT_NAME}_TSE_TIMING.csv`
 
 If any of them is missing, summary generation will stop with an error so the missing stage is visible immediately.

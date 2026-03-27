@@ -30,10 +30,9 @@ Key features of REAL-T include:
 - **Multi-genre**: Covering diverse conversational scenarios
 - **Multi-enrollment**: Multiple enrollment utterance from different parts of the conversation
 
-To support controlled evaluation, we define two test sets:
+REAL-T now ships a single official evaluation split:
 
-- **BASE**: A filtered, balanced subset for initial testing
-- **PRIMARY**: A more realistic and challenging benchmark
+- **DEV**: The conversation-centric development benchmark used throughout this repository
 
 Evaluations reveal that existing TSE models suffer significant performance degradation on REAL-T, highlighting the need for more robust approaches tailored to real conversational speech.
 
@@ -131,11 +130,11 @@ This script runs TSE inference for multiple datasets using a specified model. Ea
 | **Variable Name** | **Description** |
 | :--- | :--- |
 | `MODEL_NAME 🚩` | Name of the TSE model used for inference (e.g., `bsrnn_vox1`). |
-| `DATASETS 🚩` | List of datasets to process (e.g., AliMeeting, AMI, CHiME6, AISHELL-4, DipCo). Fisher can also be included if needed. |
-| `TEST_SET 🚩` | Test subset to use: `PRIMARY` or `BASE`. |
+| `DATASETS 🚩` | List of datasets to process (e.g., AliMeeting, AMI, CHiME6, AISHELL-4, DipCo). |
+| `TEST_SET 🚩` | Test subset to use: `DEV`. |
 | `DEVICE 🚩` | Device on which to run inference (`cuda` for GPU, `cpu` for CPU). |
-| `BASE_META_PATH` | Base directory containing metadata CSV files for each dataset. |
-| `BASE_OUTPUT_DIR` | Directory where the separated audios will be saved. |
+| `DATASET_ROOT` | Root directory containing metadata CSV files for each dataset. |
+| `OUTPUT_ROOT` | Directory where the separated audios will be saved. |
 | `TSE_SCRIPT` | Path to the TSE inference Python script (`tse.py`). |
 | `META_CSV_PATH` | Path to the CSV file containing mixture and enrolment utterance metadata. |
 | `UTTERANCE_MAP_CSV` | Path to the CSV mapping enrolment utterances to mixture utterances. |
@@ -145,24 +144,24 @@ This script runs TSE inference for multiple datasets using a specified model. Ea
 
 ### 3.2 One-Click Evaluation
 
-The recommended evaluation entrypoint is now `run_eval.sh` at the repo root. It runs the full evaluation pipeline sequentially on one `BASE_DIR`, using one CUDA device for all stages.
+The recommended evaluation entrypoint is now `run_eval.sh` at the repo root. It runs the full evaluation pipeline sequentially on one `OUTPUT_DIR`, using one CUDA device for all stages.
 
 ```bash
 cd REAL-TSE-Challenge
-bash ./run_eval.sh --base-dir ./output/PRIMARY/BSRNN --test-set PRIMARY --cuda 0
+bash ./run_eval.sh --output-dir ./output/DEV/BSRNN --test-set DEV --cuda 0
 ```
 
 `run_eval.sh` supports three common usages:
 
 ```bash
 # 1 2: run all evaluation sub-scripts, then summarize
-bash ./run_eval.sh --base-dir ./output/PRIMARY/BSRNN --test-set PRIMARY --cuda 0 1 2
+bash ./run_eval.sh --output-dir ./output/DEV/BSRNN --test-set DEV --cuda 0 1 2
 
 # 1: only run all evaluation sub-scripts
-bash ./run_eval.sh --base-dir ./output/PRIMARY/BSRNN --test-set PRIMARY --cuda 0 1
+bash ./run_eval.sh --output-dir ./output/DEV/BSRNN --test-set DEV --cuda 0 1
 
 # 2: only summarize existing CSV results
-bash ./run_eval.sh --base-dir ./output/PRIMARY/BSRNN --test-set PRIMARY --cuda 0 2
+bash ./run_eval.sh --output-dir ./output/DEV/BSRNN --test-set DEV --cuda 0 2
 ```
 
 If no mode is provided, the default is `1 2`.
@@ -175,24 +174,18 @@ By default, `run_eval.sh` runs:
 4. `speaker similarity (mixture_enrol)`
 5. `DNSMOS`
 
-Optional Fisher support:
-
-```bash
-bash ./run_eval.sh --base-dir ./output/PRIMARY/BSRNN --test-set PRIMARY --cuda 0 --include-fisher
-```
-
-Expected outputs under the chosen `BASE_DIR`:
+Expected outputs under the chosen `OUTPUT_DIR`:
 
 - Detailed metric files under `eval_metrics/` (configurable via `EVAL_METRICS_SUBDIR`):
-  - `eval_metrics/{BASE_NAME}_TER.csv` and `eval_metrics/{BASE_NAME}_TER.txt`
-  - `eval_metrics/{BASE_NAME}_TSE_TIMING.csv` and `eval_metrics/{BASE_NAME}_TSE_TIMING.txt`
-  - `eval_metrics/{BASE_NAME}_spk_similarity.csv` and `eval_metrics/{BASE_NAME}_spk_similarity_summary.txt`
-  - `eval_metrics/{BASE_NAME}_spk_similarity_mixture_enrol.csv` and `eval_metrics/{BASE_NAME}_spk_similarity_mixture_enrol_summary.txt`
-  - `eval_metrics/{BASE_NAME}_dnsmos.csv` and `eval_metrics/{BASE_NAME}_dnsmos.txt`
-- Aggregated report at the base directory root:
-  - `{BASE_NAME}_summary.txt`
+  - `eval_metrics/{OUTPUT_NAME}_TER.csv` and `eval_metrics/{OUTPUT_NAME}_TER.txt`
+  - `eval_metrics/{OUTPUT_NAME}_TSE_TIMING.csv` and `eval_metrics/{OUTPUT_NAME}_TSE_TIMING.txt`
+  - `eval_metrics/{OUTPUT_NAME}_spk_similarity.csv` and `eval_metrics/{OUTPUT_NAME}_spk_similarity_summary.txt`
+  - `eval_metrics/{OUTPUT_NAME}_spk_similarity_mixture_enrol.csv` and `eval_metrics/{OUTPUT_NAME}_spk_similarity_mixture_enrol_summary.txt`
+  - `eval_metrics/{OUTPUT_NAME}_dnsmos.csv` and `eval_metrics/{OUTPUT_NAME}_dnsmos.txt`
+- Aggregated report at the output directory root:
+  - `{OUTPUT_NAME}_summary.txt`
 
-`{BASE_NAME}_summary.txt` is a compact aggregated report recomputed from the metric CSV files above. It contains:
+`{OUTPUT_NAME}_summary.txt` is a compact aggregated report recomputed from the metric CSV files above. It contains:
 
 - `Mean by dataset`
 - `Mean by language`
@@ -204,7 +197,7 @@ with grouped columns:
 - `DNSMOS`: `SIG`, `BAK`, `OVRL`, `P808`
 - `RATIO`: `precision`, `recall`, `f1`
 
-At the moment, `RATIO` is fully sourced from `eval_metrics/{BASE_NAME}_TSE_TIMING.csv`, using the mean `precision`, `recall`, and `f1`.
+At the moment, `RATIO` is fully sourced from `eval_metrics/{OUTPUT_NAME}_TSE_TIMING.csv`, using the mean `precision`, `recall`, and `f1`.
 
 Detailed per-metric instructions, prerequisites, and optional visualization are now documented in [`eval/README.md`](./eval/README.md).
 
@@ -216,11 +209,11 @@ Detailed per-metric instructions, prerequisites, and optional visualization are 
 
 ## 4. Results
 
-The table below compares the performance of several recently proposed TSE models on the simulated Libri2Mix and PRIMARY test sets. 
+The table below compares the performance of several recently proposed TSE models on the simulated Libri2Mix and DEV test sets. 
 
 <div align="center">
 
-| Model       | Training Data     | Libri2Mix SI-SDR (dB) | PRIMARY zh (%) | PRIMARY en (%) |
+| Model       | Training Data     | Libri2Mix SI-SDR (dB) | DEV zh (%) | DEV en (%) |
 |:-------------:|:-------------------:|:------------------------:|:----------------:|:----------------:|
 | TSELM-L     | Libri2Mix-360     | /                      | 331.73         | 192.39         |
 | USEF-TFGridnet | Libri2Mix-100  | **18.05**              | 67.98          | 87.27          |

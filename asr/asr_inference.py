@@ -9,8 +9,7 @@ language = {
     'AISHELL-4': 'zh',
     'AliMeeting': 'zh',
     'AMI': 'en',
-    'DipCo': 'en',
-    'Fisher': 'en'
+    'DipCo': 'en'
 }
 
 def get_asr_model(model_name, device):

@@ -130,7 +130,7 @@ fi
 DATASETS_ROOT="./datasets"
 DATASET_ROOT="${DATASETS_ROOT}/REAL-T"
 ARCHIVE_DIR="${DATASETS_ROOT}/archives"
-ARCHIVE_NAME="${REALT_DATASET_ARCHIVE_NAME:-REAL-T-dataset.tar.gz}"
+ARCHIVE_NAME="${REALT_DATASET_ARCHIVE_NAME:-REAL-T-dev.tag.gz}"
 ARCHIVE_PATH="${ARCHIVE_DIR}/${ARCHIVE_NAME}"
 REBUILD_MAPPING_MODE="${REALT_MAPPING_MODE:-absolute}"
 FORCE_DATASET_DOWNLOAD="${REALT_FORCE_DATASET_DOWNLOAD:-0}"
@@ -141,8 +141,9 @@ mkdir -p "$ARCHIVE_DIR"
 have_full_dataset() {
     [ -d "${DATASET_ROOT}/mixtures" ] && \
     [ -d "${DATASET_ROOT}/enrolment_speakers" ] && \
-    [ -d "${DATASET_ROOT}/BASE" ] && \
-    [ -d "${DATASET_ROOT}/PRIMARY" ]
+    [ -d "${DATASET_ROOT}/DEV" ] && \
+    [ -d "${DATASET_ROOT}/metadata" ] && \
+    [ -d "${DATASET_ROOT}/json" ]
 }
 
 download_dataset_from_google_drive() {
