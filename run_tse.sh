@@ -3,7 +3,7 @@
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/env_setup.sh"
 
 
-MODEL_NAME=${1:-"tfmap_context_100"}    # bsrnn pretrained on VoxCeleb1
+MODEL_NAME=${1:-"tfmap_context_100"}    # bsrnn pretrained on Libri2mix-100
 MODEL_DIR="./pretrained"          # Directory containing the model checkpoint
 
 # Dataset names
