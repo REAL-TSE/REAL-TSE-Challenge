@@ -95,6 +95,8 @@ Or run with a Google Drive sharing URL:
 REALT_DATASET_GDRIVE_URL='https://drive.google.com/file/d/.../view?usp=sharing' bash -i ./pre.sh
 ```
 
+The dev-set is available at [Google Drive](https://drive.google.com/file/d/1uGTcTfRjOdqPa4PJAhjrXYLzxbGVy6pY/view?usp=sharing) 
+
 `pre.sh` supports 5 optional switches (all default to `1`):
 
 - `REALT_PREP_DOWNLOAD_DATASET`
