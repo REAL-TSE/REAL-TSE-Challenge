@@ -206,8 +206,9 @@ We evaluate four BSRNN-based TSE models with different speaker information fusio
 | BSRNN_TFMAP_CAUSAL |                     0.744 |               0.506 |           0.535 |       1.99 |       1.72 |        1.56 |        2.76 |   0.779 |   0.952 |    0.844 |
 
 </div>
-The checkpoints is availibale at [ckpt](https://drive.google.com/file/d/1M4UqK2A2EeHmQ0pCevYqBgaYn3RvklgC/view?usp=drive_link). The directory structure for the pretrained models in the REAL-T project is suggested to be:
+The checkpoints is availibale at [Download Checkpoint](https://drive.google.com/file/d/1M4UqK2A2EeHmQ0pCevYqBgaYn3RvklgC/view?usp=drive_link). The directory structure for the pretrained models in the REAL-T project is suggested to be:
 
+```
 REAL-T/
 ├── pretrained/
 │ ├── pak2/
