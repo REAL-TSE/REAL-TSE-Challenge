@@ -66,7 +66,7 @@ pip install -r requirements.txt
 pip install --force-reinstall --no-deps onnxruntime-gpu==1.19.2
 ```
 
-`requirements.txt` is the only supported Python dependency entrypoint for this repo. For RTX 5090 / `sm_120`, it resolves the `cu128` PyTorch wheels automatically. `wespeaker` remains the only GitHub dependency because local `wesep` imports it directly.
+`requirements.txt` is the only supported Python dependency entrypoint for this repo. For RTX 5090 / `sm_120`, it resolves the `cu128` PyTorch wheels automatically. If you encounter any issues, try using `requirements2.txt` instead. `wespeaker` remains the only GitHub dependency because local `wesep` imports it directly.
 
 All top-level scripts source `env_setup.sh` by default. That helper activates `REAL-T` and appends the local `FireRedASR` / `FireRedASR2S` / `wesep` paths automatically. If you want to use a different env name temporarily, run them with `REALT_CONDA_ENV=<your_env_name>`.
 
