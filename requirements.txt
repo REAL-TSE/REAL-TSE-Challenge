@@ -129,5 +129,5 @@ urllib3==2.4.0
 virtualenv==20.31.2
 wcwidth==0.2.13
 websocket-client==1.8.0
-wespeaker @ git+https://github.com/wenet-e2e/wespeaker.git@e9bbf73d0fd13db6cf42a6cb2eafb0d7dd0f8e0e
+wespeaker @ git+https://github.com/wenet-e2e/wespeaker.git@8f53b6485d9f88a207bd17e7f8dba899495ec794
 wheel==0.45.1

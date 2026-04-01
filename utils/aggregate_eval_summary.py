@@ -156,6 +156,20 @@ def mean_by_group(
     )
 
 
+def mean_overall(
+    df: pd.DataFrame,
+    metrics: Sequence[str],
+    row_name: str = "overall",
+    key_col: str = "group",
+) -> pd.DataFrame:
+    if df.empty:
+        return pd.DataFrame(columns=[key_col, *metrics])
+
+    overall = df[list(metrics)].mean(numeric_only=True).to_dict()
+    overall[key_col] = row_name
+    return pd.DataFrame([overall], columns=[key_col, *metrics])
+
+
 def to_metric_map(
     df: pd.DataFrame,
     key_col: str,
@@ -314,6 +328,27 @@ def summarize_one_output_dir(
         columns={"language": "lang", "precision": "ratio_precision", "recall": "ratio_recall", "f1": "ratio_f1"}
     )
 
+    ter_overall = mean_overall(ter_work, ["wer_or_cer"], key_col="scope").rename(
+        columns={"wer_or_cer": "ter_whisper"}
+    )
+    sim_overall = mean_overall(sim_work, ["speaker_cosine_similarity"], key_col="scope").rename(
+        columns={"speaker_cosine_similarity": "sim_enrol_tse"}
+    )
+    sim_baseline_overall = mean_overall(
+        sim_baseline_work, ["speaker_cosine_similarity"], key_col="scope"
+    ).rename(columns={"speaker_cosine_similarity": "sim_enrol_mixture"})
+    dnsmos_overall = mean_overall(dnsmos_work, ["SIG", "BAK", "OVRL", "P808"], key_col="scope").rename(
+        columns={
+            "SIG": "dnsmos_sig",
+            "BAK": "dnsmos_bak",
+            "OVRL": "dnsmos_ovrl",
+            "P808": "dnsmos_p808",
+        }
+    )
+    timing_overall = mean_overall(timing_work, ["precision", "recall", "f1"], key_col="scope").rename(
+        columns={"precision": "ratio_precision", "recall": "ratio_recall", "f1": "ratio_f1"}
+    )
+
     dataset_values = merge_metric_maps(
         to_metric_map(ter_dataset, "dataset", {"ter_whisper": "ter_whisper"}),
         to_metric_map(sim_baseline_dataset, "dataset", {"sim_enrol_mixture": "sim_enrol_mixture"}),
@@ -364,6 +399,31 @@ def summarize_one_output_dir(
         ),
     )
 
+    overall_values = merge_metric_maps(
+        to_metric_map(ter_overall, "scope", {"ter_whisper": "ter_whisper"}),
+        to_metric_map(sim_baseline_overall, "scope", {"sim_enrol_mixture": "sim_enrol_mixture"}),
+        to_metric_map(sim_overall, "scope", {"sim_enrol_tse": "sim_enrol_tse"}),
+        to_metric_map(
+            dnsmos_overall,
+            "scope",
+            {
+                "dnsmos_sig": "dnsmos_sig",
+                "dnsmos_bak": "dnsmos_bak",
+                "dnsmos_ovrl": "dnsmos_ovrl",
+                "dnsmos_p808": "dnsmos_p808",
+            },
+        ),
+        to_metric_map(
+            timing_overall,
+            "scope",
+            {
+                "ratio_precision": "ratio_precision",
+                "ratio_recall": "ratio_recall",
+                "ratio_f1": "ratio_f1",
+            },
+        ),
+    )
+
     dataset_names = ordered_names(dataset_values.keys(), DEFAULT_DATASET_ORDER)
     lang_names = ordered_names(lang_values.keys(), DEFAULT_LANG_ORDER)
 
@@ -390,6 +450,9 @@ def summarize_one_output_dir(
     lines.append("")
     lines.append("Mean by language")
     lines.extend(build_two_level_table("lang", lang_names, grouped_columns, lang_values))
+    lines.append("")
+    lines.append("Mean overall")
+    lines.extend(build_two_level_table("scope", ["overall"], grouped_columns, overall_values))
     lines.append("")
     lines.append("Input CSVs")
     lines.extend(

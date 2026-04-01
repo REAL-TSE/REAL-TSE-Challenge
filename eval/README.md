@@ -99,26 +99,41 @@ Evaluation requires:
 
 ### Recommended: One-command preparation via `pre.sh`
 
-`pre.sh` now supports downloading dataset + all 4 model groups in one command (all enabled by default):
+`pre.sh` prepares a manually downloaded dataset plus all 4 model groups in one command (all enabled by default):
 
 ```bash
-REALT_DATASET_GDRIVE_FILE_ID=<google_drive_file_id> bash -i ./pre.sh
+bash -i ./pre.sh
 ```
 
-If you already have a local dataset under `./datasets/REAL-T`, `pre.sh` will skip dataset download and still prepare mappings.
+The REAL-T DEV dataset archive must be downloaded manually from [Google Drive](https://drive.google.com/file/d/1uGTcTfRjOdqPa4PJAhjrXYLzxbGVy6pY/view?usp=sharing).
+
+Before running `pre.sh`, either:
+
+```bash
+mkdir -p ./datasets/archives
+mv ~/Downloads/REAL-T-dev.tar.gz ./datasets/archives/REAL-T-dev.tar.gz
+```
+
+or keep the archive elsewhere and pass:
+
+```bash
+REALT_DATASET_ARCHIVE_PATH=/absolute/path/to/REAL-T-dev.tar.gz bash -i ./pre.sh
+```
+
+If you already have a local dataset under `./datasets/REAL-T`, `pre.sh` will skip extraction and still prepare mappings.
 
 Optional switches (all default to `1`):
 
-- `REALT_PREP_DOWNLOAD_DATASET`
+- `REALT_PREP_PREPARE_DATASET`
 - `REALT_PREP_DOWNLOAD_FIRERED_ASR`
 - `REALT_PREP_DOWNLOAD_WHISPER`
 - `REALT_PREP_DOWNLOAD_FIRERED_VAD`
 - `REALT_PREP_DOWNLOAD_DNSMOS`
 
-Example: only download dataset + FireRedVAD
+Example: only prepare the local dataset archive + FireRedVAD
 
 ```bash
-REALT_DATASET_GDRIVE_FILE_ID=<google_drive_file_id> \
+REALT_DATASET_ARCHIVE_PATH=/absolute/path/to/REAL-T-dev.tar.gz \
 REALT_PREP_DOWNLOAD_FIRERED_ASR=0 \
 REALT_PREP_DOWNLOAD_WHISPER=0 \
 REALT_PREP_DOWNLOAD_DNSMOS=0 \
@@ -159,7 +174,7 @@ python -c "from modelscope import snapshot_download; snapshot_download('xukaituo
 
 Timing evaluation also requires overlap JSON under `./datasets/REAL-T/json`.
 
-If your dataset was prepared from the recommended Google Drive archive via `bash -i ./pre.sh`, that directory is already included.
+If your dataset was prepared from the recommended manually downloaded archive via `bash -i ./pre.sh`, that directory is already included.
 
 
 ### DNSMOS

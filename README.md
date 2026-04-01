@@ -44,7 +44,7 @@ For more details, refer to our paper: [REAL-T Paper](https://www.isca-archive.or
 ### 2.1 Clone the repository
 
 ```bash
-git clone https://github.com/REAL-TSE/REAL-T.git
+git clone https://github.com/REAL-TSE/REAL-TSE-Challenge.git
 cd REAL-TSE-Challenge
 
 # install submodules (wesep + FireRedASR2S)
@@ -83,27 +83,36 @@ $ export PYTHONPATH=$PWD/wesep/:$PYTHONPATH
 
 `pre.sh` is the recommended one-command preparation entrypoint. By default, it prepares the dataset and all model weights required by evaluation.
 
-Run with Google Drive file id:
+The DEV set must be downloaded manually from [Google Drive](https://drive.google.com/file/d/1uGTcTfRjOdqPa4PJAhjrXYLzxbGVy6pY/view?usp=sharing). `pre.sh` no longer downloads the dataset automatically.
+
+After downloading the archive manually, choose one of these layouts before running `pre.sh`:
 
 ```bash
-REALT_DATASET_GDRIVE_FILE_ID=<google_drive_file_id> bash -i ./pre.sh
+# Option 1: place the archive at the default path expected by pre.sh
+mkdir -p ./datasets/archives
+mv ~/Downloads/REAL-T-dev.tar.gz ./datasets/archives/REAL-T-dev.tar.gz
+
+# Option 2: keep the archive elsewhere and pass its path explicitly
+REALT_DATASET_ARCHIVE_PATH=/absolute/path/to/REAL-T-dev.tar.gz bash -i ./pre.sh
 ```
 
-Or run with a Google Drive sharing URL:
+If you have already extracted the dataset to `./datasets/REAL-T`, `pre.sh` will reuse it and only regenerate `mapping.csv`.
+
+Default run:
 
 ```bash
-REALT_DATASET_GDRIVE_URL='https://drive.google.com/file/d/.../view?usp=sharing' bash -i ./pre.sh
+bash -i ./pre.sh
 ```
-
-The dev-set is available at [Google Drive](https://drive.google.com/file/d/1uGTcTfRjOdqPa4PJAhjrXYLzxbGVy6pY/view?usp=sharing) 
 
 `pre.sh` supports 5 optional switches (all default to `1`):
 
-- `REALT_PREP_DOWNLOAD_DATASET`
+- `REALT_PREP_PREPARE_DATASET`
 - `REALT_PREP_DOWNLOAD_FIRERED_ASR`
 - `REALT_PREP_DOWNLOAD_WHISPER`
 - `REALT_PREP_DOWNLOAD_FIRERED_VAD`
 - `REALT_PREP_DOWNLOAD_DNSMOS`
+
+For backward compatibility, `REALT_PREP_DOWNLOAD_DATASET` is still accepted as an alias of `REALT_PREP_PREPARE_DATASET`.
 
 After a default run, files are prepared at:
 
@@ -129,18 +138,18 @@ bash -i run_tse.sh
 
 This script runs TSE inference for multiple datasets using a specified model. Each dataset will be processed individually, generating separated target speaker audio files.
 
-| **Variable Name** | **Description** |
-| :--- | :--- |
-| `MODEL_NAME 🚩` | Name of the TSE model used for inference (e.g., `bsrnn_vox1`). |
-| `DATASETS 🚩` | List of datasets to process (e.g., AliMeeting, AMI, CHiME6, AISHELL-4, DipCo). |
-| `TEST_SET 🚩` | Test subset to use: `DEV`. |
-| `DEVICE 🚩` | Device on which to run inference (`cuda` for GPU, `cpu` for CPU). |
-| `DATASET_ROOT` | Root directory containing metadata CSV files for each dataset. |
-| `OUTPUT_ROOT` | Directory where the separated audios will be saved. |
-| `TSE_SCRIPT` | Path to the TSE inference Python script (`tse.py`). |
-| `META_CSV_PATH` | Path to the CSV file containing mixture and enrolment utterance metadata. |
-| `UTTERANCE_MAP_CSV` | Path to the CSV mapping enrolment utterances to mixture utterances. |
-| `OUTPUT_DIR` | Directory where output audios for each dataset will be stored. |
+| **Variable Name**   | **Description**                                                                |
+| :------------------ | :----------------------------------------------------------------------------- |
+| `MODEL_NAME 🚩`      | Name of the TSE model used for inference (e.g., `bsrnn_vox1`).                 |
+| `DATASETS 🚩`        | List of datasets to process (e.g., AliMeeting, AMI, CHiME6, AISHELL-4, DipCo). |
+| `TEST_SET 🚩`        | Test subset to use: `DEV`.                                                     |
+| `DEVICE 🚩`          | Device on which to run inference (`cuda` for GPU, `cpu` for CPU).              |
+| `DATASET_ROOT`      | Root directory containing metadata CSV files for each dataset.                 |
+| `OUTPUT_ROOT`       | Directory where the separated audios will be saved.                            |
+| `TSE_SCRIPT`        | Path to the TSE inference Python script (`tse.py`).                            |
+| `META_CSV_PATH`     | Path to the CSV file containing mixture and enrolment utterance metadata.      |
+| `UTTERANCE_MAP_CSV` | Path to the CSV mapping enrolment utterances to mixture utterances.            |
+| `OUTPUT_DIR`        | Directory where output audios for each dataset will be stored.                 |
 
 ---
 
@@ -216,12 +225,12 @@ We evaluate four BSRNN-based TSE models with different speaker information fusio
 
 <div align="center">
 
-| Model        | TER (fireredasr-1/whisper) | SIM (enrol-mixture) | SIM (enrol-tse) | DNSMOS SIG | DNSMOS BAK | DNSMOS OVRL | RATIO P | RATIO R | RATIO F1 |
-|--------------|---------------------------|---------------------|-----------------|------------|------------|-------------|-------------|---------|---------|
-| BSRNN_EMB    |                      0.770 |               0.506 |           0.501 |       2.15 |        1.90 |        1.66 |    0.780 |   0.946 |    0.841 |
-| BSRNN_EMB_CAUSAL |                     0.788 |               0.506 |           0.492 |       2.09 |       1.92 |        1.63 |   0.781 |    0.920 |    0.829 |
-| BSRNN_TFMAP  |                     0.766 |               0.506 |           0.521 |        1.90 |       1.66 |         1.50 |   0.776 |   0.946 |    0.838 |
-| BSRNN_TFMAP_CAUSAL |                     0.744 |               0.506 |           0.535 |       1.99 |       1.72 |        1.56 |   0.779 |   0.952 |    0.844 |
+| Model              | TER (fireredasr-1/whisper) | SIM (enrol-mixture) | SIM (enrol-tse) | DNSMOS SIG | DNSMOS BAK | DNSMOS OVRL | RATIO P | RATIO R | RATIO F1 |
+| ------------------ | -------------------------- | ------------------- | --------------- | ---------- | ---------- | ----------- | ------- | ------- | -------- |
+| BSRNN_EMB          | 0.770                      | 0.506               | 0.501           | 2.15       | 1.90       | 1.66        | 0.780   | 0.946   | 0.841    |
+| BSRNN_EMB_CAUSAL   | 0.788                      | 0.506               | 0.492           | 2.09       | 1.92       | 1.63        | 0.781   | 0.920   | 0.829    |
+| BSRNN_TFMAP        | 0.766                      | 0.506               | 0.521           | 1.90       | 1.66       | 1.50        | 0.776   | 0.946   | 0.838    |
+| BSRNN_TFMAP_CAUSAL | 0.744                      | 0.506               | 0.535           | 1.99       | 1.72       | 1.56        | 0.779   | 0.952   | 0.844    |
 
 </div>
 
