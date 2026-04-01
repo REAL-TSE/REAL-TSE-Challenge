@@ -163,6 +163,7 @@ REAL-T/
 │ ├── spk_emb_causal_100/
 │ ├── tfmap_context_100/
 │ └── tfmap_context_causal_100/
+```
 
 ---
 
@@ -247,7 +248,6 @@ We evaluate four BSRNN-based TSE models with different speaker information fusio
 
 </div>
 
-```
 
 ## 5. Citation
 
