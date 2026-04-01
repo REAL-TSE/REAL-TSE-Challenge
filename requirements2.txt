@@ -128,3 +128,4 @@ websocket-client==1.8.0
 wespeaker @ git+https://github.com/wenet-e2e/wespeaker.git@8f53b6485d9f88a207bd17e7f8dba899495ec794
 wespeakerruntime==1.0.1
 whisper==1.1.10
+s3prl==0.4.18
