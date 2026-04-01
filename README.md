@@ -131,7 +131,7 @@ This script runs TSE inference for multiple datasets using a specified model. Ea
 
 | **Variable Name** | **Description** |
 | :--- | :--- |
-| `MODEL_NAME 🚩` | Name of the TSE model used for inference (e.g., `tfmap_context_100`). |
+| `MODEL_NAME 🚩` | Name of the TSE model used for inference (e.g., `bsrnn_vox1`). |
 | `DATASETS 🚩` | List of datasets to process (e.g., AliMeeting, AMI, CHiME6, AISHELL-4, DipCo). |
 | `TEST_SET 🚩` | Test subset to use: `DEV`. |
 | `DEVICE 🚩` | Device on which to run inference (`cuda` for GPU, `cpu` for CPU). |
@@ -142,17 +142,6 @@ This script runs TSE inference for multiple datasets using a specified model. Ea
 | `UTTERANCE_MAP_CSV` | Path to the CSV mapping enrolment utterances to mixture utterances. |
 | `OUTPUT_DIR` | Directory where output audios for each dataset will be stored. |
 
-The checkpoints is availibale at [Google Drive](https://drive.google.com/uc?export=download&id=1M4UqK2A2EeHmQ0pCevYqBgaYn3RvklgC) . The directory structure for the pretrained models in the REAL-T project is suggested to be:
-
-```
-REAL-T/
-├── pretrained/
-│ ├── spk_emb_100/
-│ │ ├── avg_model.pt
-│ │ └── config.yaml
-│ ├── spk_emb_causal_100/
-│ ├── tfmap_context_100/
-│ └── tfmap_context_causal_100/
 ---
 
 ### 3.2 One-Click Evaluation
@@ -161,20 +150,20 @@ The recommended evaluation entrypoint is now `run_eval.sh` at the repo root. It 
 
 ```bash
 cd REAL-TSE-Challenge
-bash ./run_eval.sh --output-dir ./output/DEV/tfmap_context_100 --test-set DEV --cuda 0
+bash ./run_eval.sh --output-dir ./output/DEV/BSRNN --test-set DEV --cuda 0
 ```
 
 `run_eval.sh` supports three common usages:
 
 ```bash
 # 1 2: run all evaluation sub-scripts, then summarize
-bash ./run_eval.sh --output-dir ./output/DEV/tfmap_context_100 --test-set DEV --cuda 0 1 2
+bash ./run_eval.sh --output-dir ./output/DEV/BSRNN --test-set DEV --cuda 0 1 2
 
 # 1: only run all evaluation sub-scripts
-bash ./run_eval.sh --output-dir ./output/DEV/tfmap_context_100 --test-set DEV --cuda 0 1
+bash ./run_eval.sh --output-dir ./output/DEV/BSRNN --test-set DEV --cuda 0 1
 
 # 2: only summarize existing CSV results
-bash ./run_eval.sh --output-dir ./output/DEV/tfmap_context_100 --test-set DEV --cuda 0 2
+bash ./run_eval.sh --output-dir ./output/DEV/BSRNN --test-set DEV --cuda 0 2
 ```
 
 If no mode is provided, the default is `1 2`.
@@ -237,6 +226,17 @@ We evaluate four BSRNN-based TSE models with different speaker information fusio
 </div>
 
 
+The checkpoints is availibale at [Google Drive](https://drive.google.com/uc?export=download&id=1M4UqK2A2EeHmQ0pCevYqBgaYn3RvklgC) . The directory structure for the pretrained models in the REAL-T project is suggested to be:
+
+```
+REAL-T/
+├── pretrained/
+│ ├── spk_emb_100/
+│ │ ├── avg_model.pt
+│ │ └── config.yaml
+│ ├── spk_emb_causal_100/
+│ ├── tfmap_context_100/
+│ └── tfmap_context_causal_100/
 ```
 
 ## 5. Citation
