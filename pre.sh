@@ -80,14 +80,12 @@ for fname in ("sig_bak_ovr.onnx", "model_v8.onnx"):
 PY
 }
 
-# ---- One-command preparation switches (all default to enabled) ----
-REALT_PREP_PREPARE_DATASET="${REALT_PREP_PREPARE_DATASET:-${REALT_PREP_DOWNLOAD_DATASET:-1}}"
+# ---- Model download switches (all default to enabled) ----
 REALT_PREP_DOWNLOAD_FIRERED_ASR="${REALT_PREP_DOWNLOAD_FIRERED_ASR:-1}"
 REALT_PREP_DOWNLOAD_WHISPER="${REALT_PREP_DOWNLOAD_WHISPER:-1}"
 REALT_PREP_DOWNLOAD_FIRERED_VAD="${REALT_PREP_DOWNLOAD_FIRERED_VAD:-1}"
 REALT_PREP_DOWNLOAD_DNSMOS="${REALT_PREP_DOWNLOAD_DNSMOS:-1}"
 
-require_binary_flag "REALT_PREP_PREPARE_DATASET" "$REALT_PREP_PREPARE_DATASET"
 require_binary_flag "REALT_PREP_DOWNLOAD_FIRERED_ASR" "$REALT_PREP_DOWNLOAD_FIRERED_ASR"
 require_binary_flag "REALT_PREP_DOWNLOAD_WHISPER" "$REALT_PREP_DOWNLOAD_WHISPER"
 require_binary_flag "REALT_PREP_DOWNLOAD_FIRERED_VAD" "$REALT_PREP_DOWNLOAD_FIRERED_VAD"
@@ -127,78 +125,14 @@ else
     echo "[Skip] DNSMOS download disabled by REALT_PREP_DOWNLOAD_DNSMOS=0"
 fi
 
+# Regenerate mapping.csv for any dataset directories found under ./datasets/.
 DATASETS_ROOT="./datasets"
-DATASET_ROOT="${DATASETS_ROOT}/REAL-T"
-ARCHIVE_DIR="${DATASETS_ROOT}/archives"
-ARCHIVE_NAME="${REALT_DATASET_ARCHIVE_NAME:-REAL-T-dev.tar.gz}"
-DEFAULT_ARCHIVE_PATH="${ARCHIVE_DIR}/${ARCHIVE_NAME}"
-ARCHIVE_PATH="${REALT_DATASET_ARCHIVE_PATH:-$DEFAULT_ARCHIVE_PATH}"
 REBUILD_MAPPING_MODE="${REALT_MAPPING_MODE:-absolute}"
-FORCE_DATASET_PREPARE="${REALT_FORCE_DATASET_PREPARE:-${REALT_FORCE_DATASET_DOWNLOAD:-0}}"
 
-mkdir -p "$DATASETS_ROOT"
-mkdir -p "$ARCHIVE_DIR"
-
-have_full_dataset() {
-    [ -d "${DATASET_ROOT}/mixtures" ] && \
-    [ -d "${DATASET_ROOT}/enrolment_speakers" ] && \
-    [ -d "${DATASET_ROOT}/DEV" ] && \
-    [ -d "${DATASET_ROOT}/metadata" ] && \
-    [ -d "${DATASET_ROOT}/json" ]
-}
-
-print_dataset_manual_download_help() {
-    cat >&2 <<EOF
-REAL-T dataset not found under ${DATASET_ROOT}.
-
-Please download the DEV dataset archive manually from:
-  https://drive.google.com/file/d/1uGTcTfRjOdqPa4PJAhjrXYLzxbGVy6pY/view?usp=sharing
-
-Then choose one of the following:
-  1. Extract it so the dataset is available at ${DATASET_ROOT}
-  2. Save the archive at ${DEFAULT_ARCHIVE_PATH}
-  3. Save it anywhere else and rerun with:
-     REALT_DATASET_ARCHIVE_PATH=/absolute/path/to/REAL-T-dev.tar.gz bash -i ./pre.sh
-EOF
-}
-
-prepare_dataset_from_local_archive() {
-    if [ ! -f "$ARCHIVE_PATH" ]; then
-        print_dataset_manual_download_help
-        exit 1
-    fi
-
-    echo "Extracting REAL-T dataset from local archive: ${ARCHIVE_PATH}"
-    rm -rf "$DATASET_ROOT"
-    case "$ARCHIVE_PATH" in
-        *.tar.gz|*.tgz)
-            tar -xzf "$ARCHIVE_PATH" -C "$DATASETS_ROOT"
-            ;;
-        *.zip)
-            unzip -o "$ARCHIVE_PATH" -d "$DATASETS_ROOT"
-            ;;
-        *)
-            echo "Unsupported dataset archive format: $ARCHIVE_PATH" >&2
-            exit 1
-            ;;
-    esac
-}
-
-if [ "$REALT_PREP_PREPARE_DATASET" = "1" ]; then
-    if [ "$FORCE_DATASET_PREPARE" = "1" ] || ! have_full_dataset; then
-        prepare_dataset_from_local_archive
-    else
-        echo "Existing REAL-T dataset detected under $DATASET_ROOT. Skipping dataset extraction."
-    fi
-else
-    echo "[Skip] Dataset preparation disabled by REALT_PREP_PREPARE_DATASET=0"
-fi
-
-if [ -d "$DATASET_ROOT" ]; then
+for dataset_dir in "${DATASETS_ROOT}"/REAL-T-*/; do
+    [ -d "$dataset_dir" ] || continue
     python3 ./utils/regen_realt_dataset_mappings.py \
-      --dataset-root "$DATASET_ROOT" \
+      --dataset-root "$dataset_dir" \
       --mapping-mode "$REBUILD_MAPPING_MODE"
-    echo "mapping.csv generated at $(realpath "${DATASET_ROOT}/mapping.csv")"
-else
-    echo "[Skip] ${DATASET_ROOT} not found; mapping.csv regeneration skipped."
-fi
+    echo "mapping.csv generated at $(realpath "${dataset_dir}/mapping.csv")"
+done

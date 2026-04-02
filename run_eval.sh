@@ -9,7 +9,7 @@ source "${REAL_T_ROOT}/env_setup.sh"
 usage() {
     cat <<'EOF'
 Usage:
-  bash ./run_eval.sh --output-dir <path> --test-set DEV --cuda <id> [1] [2]
+  bash ./run_eval.sh --output-dir <path> --test-set <DEV|EVAL> --cuda <id> [1] [2]
 
 Modes:
   1    Run all evaluation sub-scripts
@@ -70,8 +70,8 @@ if [[ "$OUTPUT_DIR" != /* ]]; then
     OUTPUT_DIR="$(cd "$ORIG_CWD" && cd "$(dirname "$OUTPUT_DIR")" && pwd)/$(basename "$OUTPUT_DIR")"
 fi
 
-if [ "$TEST_SET" != "DEV" ]; then
-    echo "--test-set must be DEV."
+if [ "$TEST_SET" != "EVAL" ] && [ "$TEST_SET" != "DEV" ]; then
+    echo "--test-set must be DEV or EVAL."
     exit 1
 fi
 
@@ -80,7 +80,8 @@ if [ ! -d "$OUTPUT_DIR" ]; then
     exit 1
 fi
 
-TEST_SET_DIR="./datasets/REAL-T/${TEST_SET}"
+DATASET_ROOT="./datasets/REAL-T-$(echo "$TEST_SET" | tr '[:upper:]' '[:lower:]')"
+TEST_SET_DIR="${DATASET_ROOT}/${TEST_SET}"
 if [ ! -d "$TEST_SET_DIR" ]; then
     echo "Test set directory not found: $TEST_SET_DIR"
     exit 1
@@ -89,6 +90,7 @@ fi
 export CUDA_VISIBLE_DEVICES="$CUDA_ID"
 export OUTPUT_DIRS="$OUTPUT_DIR"
 export TEST_SET_DIR
+export MAPPING_CSV="${DATASET_ROOT}/mapping.csv"
 export USE_GPU=1
 export ASR_DEVICE="cuda:0"
 export WESPEAKER_PROVIDER="cuda"

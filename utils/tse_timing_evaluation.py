@@ -719,8 +719,8 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Evaluate TSE timing via FireRedVAD frame-level metrics.")
-    parser.add_argument("--ground_truth_dir", type=str, required=True, help="Path to REAL-T DEV meta csv dir")
-    parser.add_argument("--predicted_dir", type=str, required=True, help="Path like output/DEV/bsrnn_vox1")
+    parser.add_argument("--ground_truth_dir", type=str, required=True, help="Path to REAL-T EVAL meta csv dir")
+    parser.add_argument("--predicted_dir", type=str, required=True, help="Path like output/EVAL/bsrnn_vox1")
     parser.add_argument(
         "--gt_json_base_dir",
         type=str,

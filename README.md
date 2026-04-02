@@ -30,9 +30,7 @@ Key features of REAL-T include:
 - **Multi-genre**: Covering diverse conversational scenarios
 - **Multi-enrollment**: Multiple enrollment utterance from different parts of the conversation
 
-REAL-T now ships a single official evaluation split:
-
-- **DEV**: The conversation-centric development benchmark used throughout this repository
+REAL-T currently ships the **DEV** split with 5 datasets (AISHELL-4, AliMeeting, AMI, CHiME6, DipCo). An **EVAL** split will be released separately.
 
 Evaluations reveal that existing TSE models suffer significant performance degradation on REAL-T, highlighting the need for more robust approaches tailored to real conversational speech.
 
@@ -81,24 +79,19 @@ $ export PYTHONPATH=$PWD/wesep/:$PYTHONPATH
 
 ### 2.4 Prepare Dataset and Checkpoints
 
-`pre.sh` is the recommended one-command preparation entrypoint. By default, it prepares the dataset and all model weights required by evaluation.
+#### Dataset
 
-The DEV set must be downloaded manually from [Google Drive](https://drive.google.com/file/d/1uGTcTfRjOdqPa4PJAhjrXYLzxbGVy6pY/view?usp=sharing). `pre.sh` no longer downloads the dataset automatically.
-
-After downloading the archive manually, choose one of these layouts before running `pre.sh`:
+Copy the `REAL-T-dev` folder into `./datasets/`:
 
 ```bash
-# Option 1: place the archive at the default path expected by pre.sh
-mkdir -p ./datasets/archives
-mv ~/Downloads/REAL-T-dev.tar.gz ./datasets/archives/REAL-T-dev.tar.gz
-
-# Option 2: keep the archive elsewhere and pass its path explicitly
-REALT_DATASET_ARCHIVE_PATH=/absolute/path/to/REAL-T-dev.tar.gz bash -i ./pre.sh
+cp -r /path/to/REAL-T-dev ./datasets/REAL-T-dev
 ```
 
-If you have already extracted the dataset to `./datasets/REAL-T`, `pre.sh` will reuse it and only regenerate `mapping.csv`.
+When additional splits (e.g. EVAL) are released, copy them alongside (e.g. `./datasets/REAL-T-eval/`). All scripts auto-detect datasets from the split directory.
 
-Default run:
+#### One-Command Setup
+
+`pre.sh` downloads model weights and regenerates `mapping.csv` for all dataset directories found under `./datasets/`:
 
 ```bash
 bash -i ./pre.sh
@@ -112,12 +105,8 @@ bash -i ./pre.sh
 - `REALT_PREP_DOWNLOAD_FIRERED_VAD`
 - `REALT_PREP_DOWNLOAD_DNSMOS`
 
-For backward compatibility, `REALT_PREP_DOWNLOAD_DATASET` is still accepted as an alias of `REALT_PREP_PREPARE_DATASET`.
+After a default run, model weights are prepared at:
 
-After a default run, files are prepared at:
-
-- Dataset root: `./datasets/REAL-T`
-- Dataset mapping: `./datasets/REAL-T/mapping.csv`
 - FireRedASR-AED-L: `./FireRedASR/pretrained_models/FireRedASR-AED-L`
 - Whisper large-v2: `./whisper/pretrained_models/whisper-large-v2`
 - FireRedVAD: `./FireRedASR2S/pretrained_models/FireRedVAD/VAD`
@@ -133,23 +122,19 @@ The `run_tse.sh` script below demonstrates how to perform TSE inference with the
 
 ```bash
 cd REAL-TSE-Challenge
-bash -i run_tse.sh
+bash -i run_tse.sh --model tfmap_context_100 --test-set DEV
 ```
 
 This script runs TSE inference for multiple datasets using a specified model. Each dataset will be processed individually, generating separated target speaker audio files.
 
-| **Variable Name**   | **Description**                                                                |
+| **Argument**        | **Description**                                                                |
 | :------------------ | :----------------------------------------------------------------------------- |
-| `MODEL_NAME 🚩`      | Name of the TSE model used for inference (e.g., `tfmap_context_100`).                 |
-| `DATASETS 🚩`        | List of datasets to process (e.g., AliMeeting, AMI, CHiME6, AISHELL-4, DipCo). |
-| `TEST_SET 🚩`        | Test subset to use: `DEV`.                                                     |
-| `DEVICE 🚩`          | Device on which to run inference (`cuda` for GPU, `cpu` for CPU).              |
-| `DATASET_ROOT`      | Root directory containing metadata CSV files for each dataset.                 |
-| `OUTPUT_ROOT`       | Directory where the separated audios will be saved.                            |
-| `TSE_SCRIPT`        | Path to the TSE inference Python script (`tse.py`).                            |
-| `META_CSV_PATH`     | Path to the CSV file containing mixture and enrolment utterance metadata.      |
-| `UTTERANCE_MAP_CSV` | Path to the CSV mapping enrolment utterances to mixture utterances.            |
-| `OUTPUT_DIR`        | Directory where output audios for each dataset will be stored.                 |
+| `--model`           | (required) TSE model name, e.g. `tfmap_context_100`.                           |
+| `--test-set`        | (required) Evaluation split: `DEV` or `EVAL`.                                  |
+| `--device`          | Inference device. Default: `cuda`.                                             |
+| `--model-dir`       | Directory containing model checkpoints. Default: `./pretrained`.               |
+| `--dataset-root`    | Root of the REAL-T dataset. Default: `./datasets/REAL-T-{dev\|eval}`.          |
+| `--output-root`     | Root output directory. Default: `./output`.                                    |
 
 
 The checkpoints is availibale at [Google Drive](https://drive.google.com/uc?export=download&id=1M4UqK2A2EeHmQ0pCevYqBgaYn3RvklgC) . The directory structure for the pretrained models in the REAL-T project is suggested to be:
@@ -175,6 +160,12 @@ The recommended evaluation entrypoint is now `run_eval.sh` at the repo root. It 
 cd REAL-TSE-Challenge
 bash ./run_eval.sh --output-dir ./output/DEV/tfmap_context_100 --test-set DEV --cuda 0
 ```
+
+| **Argument**        | **Description**                                                                |
+| :------------------ | :----------------------------------------------------------------------------- |
+| `--output-dir`      | (required) Path to the TSE output directory to evaluate.                       |
+| `--test-set`        | (required) Evaluation split (e.g. `DEV`).                                      |
+| `--cuda`            | (required) CUDA device ID for GPU-accelerated evaluation.                      |
 
 `run_eval.sh` supports three common usages:
 
@@ -234,7 +225,7 @@ Detailed per-metric instructions, prerequisites, and optional visualization are 
 
 ## 4. Results
 
-We evaluate four BSRNN-based TSE models with different speaker information fusion strategies (speaker embedding vs. time-frequency featuremap interaction) and causality (causal vs. non-causal), all trained on Libri2Mix-100. The table below compares their performance on the simulated dev sets.
+We evaluate four BSRNN-based TSE models with different speaker information fusion strategies (speaker embedding vs. time-frequency featuremap interaction) and causality (causal vs. non-causal), all trained on Libri2Mix-100. The table below compares their performance on the DEV set.
 
 
 <div align="center">

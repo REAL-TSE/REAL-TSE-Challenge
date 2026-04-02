@@ -70,13 +70,21 @@ def build_two_level_table(
     row_names: Sequence[str],
     grouped_columns: Sequence[tuple[str, str, str]],
     values: Dict[str, Dict[str, float]],
+    samples: Dict[str, int] | None = None,
 ) -> List[str]:
-    top_headers = [index_name] + [group for group, _, _ in grouped_columns]
-    sub_headers = [""] + [sub for _, sub, _ in grouped_columns]
+    top_headers = [index_name]
+    sub_headers = [""]
+    if samples is not None:
+        top_headers.append("samples")
+        sub_headers.append("")
+    top_headers += [group for group, _, _ in grouped_columns]
+    sub_headers += [sub for _, sub, _ in grouped_columns]
 
     rows: List[List[str]] = []
     for row_name in row_names:
         row = [row_name]
+        if samples is not None:
+            row.append(str(samples.get(row_name, 0)))
         row_values = values.get(row_name, {})
         for _, _, metric_key in grouped_columns:
             row.append(format_float(row_values.get(metric_key)))
@@ -427,6 +435,10 @@ def summarize_one_output_dir(
     dataset_names = ordered_names(dataset_values.keys(), DEFAULT_DATASET_ORDER)
     lang_names = ordered_names(lang_values.keys(), DEFAULT_LANG_ORDER)
 
+    dataset_samples = ter_work.groupby("dataset").size().to_dict()
+    lang_samples = ter_work.groupby("language").size().to_dict()
+    overall_samples = {"overall": len(ter_work)}
+
     grouped_columns = [
         ("TER", "fireredasr-1/whisper", "ter_whisper"),
         ("SIM", "enrol-mixture", "sim_enrol_mixture"),
@@ -446,13 +458,13 @@ def summarize_one_output_dir(
     lines.append(f"Output dir: {output_dir}")
     lines.append("")
     lines.append("Mean by dataset")
-    lines.extend(build_two_level_table("dataset", dataset_names, grouped_columns, dataset_values))
+    lines.extend(build_two_level_table("dataset", dataset_names, grouped_columns, dataset_values, samples=dataset_samples))
     lines.append("")
     lines.append("Mean by language")
-    lines.extend(build_two_level_table("lang", lang_names, grouped_columns, lang_values))
+    lines.extend(build_two_level_table("lang", lang_names, grouped_columns, lang_values, samples=lang_samples))
     lines.append("")
     lines.append("Mean overall")
-    lines.extend(build_two_level_table("scope", ["overall"], grouped_columns, overall_values))
+    lines.extend(build_two_level_table("scope", ["overall"], grouped_columns, overall_values, samples=overall_samples))
     lines.append("")
     lines.append("Input CSVs")
     lines.extend(

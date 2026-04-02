@@ -44,7 +44,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--test_set_dir",
         default=None,
-        help="Directory containing *_meta.csv (e.g. ./datasets/REAL-T/DEV). Required unless --regen_txt_only.",
+        help="Directory containing *_meta.csv (e.g. ./datasets/REAL-T/EVAL). Required unless --regen_txt_only.",
     )
     parser.add_argument(
         "--dnsmos_model_dir",

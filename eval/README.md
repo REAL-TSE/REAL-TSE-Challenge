@@ -6,7 +6,12 @@ Run the full REAL-T evaluation pipeline from the repo root with one command:
 
 ```bash
 cd REAL-TSE-Challenge
+
+# Evaluate on DEV split (5 datasets)
 bash ./run_eval.sh --output-dir ./output/DEV/BSRNN --test-set DEV --cuda 0
+
+# Evaluate on EVAL split (4 datasets)
+bash ./run_eval.sh --output-dir ./output/EVAL/BSRNN --test-set EVAL --cuda 0
 ```
 
 `run_eval.sh` now supports top-level modes:
@@ -15,17 +20,21 @@ bash ./run_eval.sh --output-dir ./output/DEV/BSRNN --test-set DEV --cuda 0
 - `2`: regenerate the aggregated summary from existing CSV files only
 - `1 2`: run sub-scripts first, then generate the aggregated summary
 
+The `--test-set` flag accepts `EVAL` or `DEV`. The pipeline auto-detects
+which datasets are available from the `*_meta.csv` files in the test set
+directory, so it works seamlessly with either 4 or 5 datasets.
+
 Examples:
 
 ```bash
-# Run all sub-scripts, then summarize
-bash ./run_eval.sh --output-dir ./output/DEV/BSRNN --test-set DEV --cuda 0 1 2
+# Run all sub-scripts, then summarize (EVAL)
+bash ./run_eval.sh --output-dir ./output/EVAL/BSRNN --test-set EVAL --cuda 0 1 2
 
-# Only run all sub-scripts
+# Only run all sub-scripts (DEV)
 bash ./run_eval.sh --output-dir ./output/DEV/BSRNN --test-set DEV --cuda 0 1
 
 # Only summarize existing CSVs
-bash ./run_eval.sh --output-dir ./output/DEV/BSRNN --test-set DEV --cuda 0 2
+bash ./run_eval.sh --output-dir ./output/EVAL/BSRNN --test-set EVAL --cuda 0 2
 ```
 
 This sequentially runs:
@@ -39,9 +48,9 @@ This sequentially runs:
 ## Shared Conventions
 
 - All commands below are intended to be run from the REAL-T repo root.
-- `OUTPUT_DIRS` is a space-separated list of TSE output roots such as `./output/DEV/BSRNN`.
-- `TEST_SET_DIR` should point to `./datasets/REAL-T/DEV`.
-- `DATASETS` defaults to `AliMeeting AISHELL-4 AMI DipCo CHiME6`.
+- `OUTPUT_DIRS` is a space-separated list of TSE output roots such as `./output/EVAL/BSRNN`.
+- `TEST_SET_DIR` should point to `./datasets/REAL-T-eval/EVAL` or `./datasets/REAL-T-dev/DEV`.
+- `DATASETS` is auto-detected from `*_meta.csv` in `TEST_SET_DIR` when not set explicitly.
 - All eval shell scripts source `env_setup.sh` automatically.
 - `run_eval.sh` sets one `CUDA_VISIBLE_DEVICES` value for the entire pipeline and forces ONNX-based stages onto CUDA with `WESPEAKER_PROVIDER=cuda` and `DNSMOS_PROVIDER=cuda`.
 - `run_eval.sh` accepts both absolute and relative `--output-dir` paths.
@@ -105,19 +114,23 @@ Evaluation requires:
 bash -i ./pre.sh
 ```
 
-The REAL-T DEV dataset archive must be downloaded manually from [Google Drive](https://drive.google.com/file/d/1uGTcTfRjOdqPa4PJAhjrXYLzxbGVy6pY/view?usp=sharing).
+Place one or both archives under `./datasets/archives/`:
 
-Before running `pre.sh`, either:
+- `REAL-T-dev.tar.gz` — DEV split (5 datasets) -> extracts to `./datasets/REAL-T-dev/`
+- `REAL-T-eval.tar.gz` — EVAL split (4 datasets, no AISHELL-4) -> extracts to `./datasets/REAL-T-eval/`
 
 ```bash
 mkdir -p ./datasets/archives
-mv ~/Downloads/REAL-T-dev.tar.gz ./datasets/archives/REAL-T-dev.tar.gz
+cp /path/to/REAL-T-dev.tar.gz  ./datasets/archives/
+cp /path/to/REAL-T-eval.tar.gz ./datasets/archives/
 ```
 
-or keep the archive elsewhere and pass:
+`pre.sh` auto-detects all archives and extracts them incrementally (both
+each archive extracts to its own directory). You can also pass archives
+explicitly:
 
 ```bash
-REALT_DATASET_ARCHIVE_PATH=/absolute/path/to/REAL-T-dev.tar.gz bash -i ./pre.sh
+REALT_DATASET_ARCHIVE_PATHS="/path/to/REAL-T-dev.tar.gz /path/to/REAL-T-eval.tar.gz" bash -i ./pre.sh
 ```
 
 If you already have a local dataset under `./datasets/REAL-T`, `pre.sh` will skip extraction and still prepare mappings.
@@ -133,7 +146,7 @@ Optional switches (all default to `1`):
 Example: only prepare the local dataset archive + FireRedVAD
 
 ```bash
-REALT_DATASET_ARCHIVE_PATH=/absolute/path/to/REAL-T-dev.tar.gz \
+REALT_DATASET_ARCHIVE_PATHS="/path/to/REAL-T-dev.tar.gz" \
 REALT_PREP_DOWNLOAD_FIRERED_ASR=0 \
 REALT_PREP_DOWNLOAD_WHISPER=0 \
 REALT_PREP_DOWNLOAD_DNSMOS=0 \
@@ -172,7 +185,7 @@ mkdir -p ./FireRedASR2S/pretrained_models/FireRedVAD
 python -c "from modelscope import snapshot_download; snapshot_download('xukaituo/FireRedVAD', local_dir='./FireRedASR2S/pretrained_models/FireRedVAD')"
 ```
 
-Timing evaluation also requires overlap JSON under `./datasets/REAL-T/json`.
+Timing evaluation also requires overlap JSON under `./datasets/REAL-T-{dev,eval}/<SPLIT>/json`.
 
 If your dataset was prepared from the recommended manually downloaded archive via `bash -i ./pre.sh`, that directory is already included.
 

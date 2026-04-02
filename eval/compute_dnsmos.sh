@@ -4,13 +4,12 @@ set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
-TEST_SET_DIR="${TEST_SET_DIR:-./datasets/REAL-T/DEV}"
 DNSMOS_MODEL_DIR="${DNSMOS_MODEL_DIR:-./DNSMOS}"
 DNSMOS_PROVIDER="${DNSMOS_PROVIDER:-auto}"
 DNSMOS_NO_DOWNLOAD="${DNSMOS_NO_DOWNLOAD:-0}"
 MAX_SAMPLES="${MAX_SAMPLES:-}"
 
-init_eval_common "./output/DEV/bsrnn_vox1 ./output/DEV/BSRNN"
+init_eval_common
 
 MODES=("$@")
 if [ ${#MODES[@]} -eq 0 ]; then

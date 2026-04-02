@@ -2,32 +2,98 @@
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/env_setup.sh"
 
+usage() {
+    cat <<'EOF'
+Usage:
+  bash ./run_tse.sh --model <name> --test-set <DEV|EVAL> [options]
 
-MODEL_NAME=${1:-"tfmap_context_100"}    # bsrnn pretrained on Libri2mix-100
-MODEL_DIR="./pretrained"          # Directory containing the model checkpoint
+Required:
+  --model         TSE model name (e.g. tfmap_context_100)
+  --test-set      Evaluation split: DEV or EVAL
 
-# Dataset names
-DATASETS=("AliMeeting" "AMI" "CHiME6" "AISHELL-4" "DipCo")
+Optional:
+  --device        Inference device (default: cuda)
+  --model-dir     Directory containing model checkpoints (default: ./pretrained)
+  --dataset-root  Root of the REAL-T dataset (default: ./datasets/REAL-T-{dev|eval})
+  --output-root   Root output directory (default: ./output)
 
-# Test subset
-TEST_SET="DEV"
+Example:
+  bash ./run_tse.sh --model tfmap_context_100 --test-set DEV
+  bash ./run_tse.sh --model tfmap_context_100 --test-set EVAL --device cuda
+EOF
+}
 
+MODEL_NAME=""
+TEST_SET=""
 DEVICE="cuda"
-
-# Paths
-DATASET_ROOT="./datasets/REAL-T"
+MODEL_DIR="./pretrained"
+DATASET_ROOT=""
 OUTPUT_ROOT="./output"
 
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --model)        MODEL_NAME="${2:-}";  shift 2 ;;
+        --test-set)     TEST_SET="${2:-}";    shift 2 ;;
+        --device)       DEVICE="${2:-}";      shift 2 ;;
+        --model-dir)    MODEL_DIR="${2:-}";   shift 2 ;;
+        --dataset-root) DATASET_ROOT="${2:-}"; shift 2 ;;
+        --output-root)  OUTPUT_ROOT="${2:-}";  shift 2 ;;
+        -h|--help)      usage; exit 0 ;;
+        *)
+            echo "Unknown argument: $1"
+            usage
+            exit 1
+            ;;
+    esac
+done
+
+if [ -z "$MODEL_NAME" ] || [ -z "$TEST_SET" ]; then
+    echo "Error: --model and --test-set are required."
+    echo
+    usage
+    exit 1
+fi
+
+if [ "$TEST_SET" != "EVAL" ] && [ "$TEST_SET" != "DEV" ]; then
+    echo "Error: --test-set must be DEV or EVAL."
+    exit 1
+fi
+
+if [ -z "$DATASET_ROOT" ]; then
+    DATASET_ROOT="./datasets/REAL-T-$(echo "$TEST_SET" | tr '[:upper:]' '[:lower:]')"
+fi
+
+TEST_SET_DIR="${DATASET_ROOT}/${TEST_SET}"
+if [ ! -d "$TEST_SET_DIR" ]; then
+    echo "Test set directory not found: $TEST_SET_DIR"
+    echo "Available splits:"
+    ls -d "${DATASET_ROOT}"/*/ 2>/dev/null || echo "  (none)"
+    exit 1
+fi
+
+# Auto-detect datasets from meta CSVs in the test set directory
+DATASETS=()
+for meta in "${TEST_SET_DIR}"/*_meta.csv; do
+    [ -f "$meta" ] || continue
+    name="$(basename "$meta" _meta.csv)"
+    DATASETS+=("$name")
+done
+
+if [ ${#DATASETS[@]} -eq 0 ]; then
+    echo "No *_meta.csv found under ${TEST_SET_DIR}."
+    exit 1
+fi
+echo "[auto-detect] TEST_SET=${TEST_SET}, DATASETS: ${DATASETS[*]}"
 
 TSE_SCRIPT="./tse_baseline/tse_inference.py"
 
 OUTPUT_ROOT="${OUTPUT_ROOT}/${TEST_SET}"
 mkdir -p "$OUTPUT_ROOT"
-# Iterate over each dataset
+
 for DATASET in "${DATASETS[@]}"; do
     echo "Processing dataset: $DATASET"
 
-    META_CSV_PATH="${DATASET_ROOT}/${TEST_SET}/${DATASET}_meta.csv"
+    META_CSV_PATH="${TEST_SET_DIR}/${DATASET}_meta.csv"
     UTTERANCE_MAP_CSV="${DATASET_ROOT}/mapping.csv"
     OUTPUT_DIR="${OUTPUT_ROOT}/${MODEL_NAME}/"
 
@@ -41,7 +107,6 @@ for DATASET in "${DATASETS[@]}"; do
         --utterance_map_csv "$UTTERANCE_MAP_CSV" \
         --device "$DEVICE"
 
-    # Check if TSE processing succeeded
     if [ $? -ne 0 ]; then
         echo "TSE processing failed for $DATASET."
         exit 1

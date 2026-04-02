@@ -5,13 +5,48 @@ REAL_T_ROOT="$(cd "${EVAL_DIR}/.." && pwd)"
 
 source "${REAL_T_ROOT}/env_setup.sh"
 
+# --- Dataset language mapping (used by auto-filtering helpers) ---
+KNOWN_CHINESE_DATASETS="AliMeeting AISHELL-4"
+KNOWN_ENGLISH_DATASETS="AMI DipCo CHiME6"
+
+auto_detect_datasets() {
+    local dir="$1"
+    local result=""
+    for meta in "$dir"/*_meta.csv; do
+        [ -f "$meta" ] || continue
+        local name
+        name="$(basename "$meta" _meta.csv)"
+        result="${result:+$result }$name"
+    done
+    echo "$result"
+}
+
+filter_datasets() {
+    local candidates="$1"
+    local allowed="$2"
+    local result=""
+    for d in $candidates; do
+        if [[ " $allowed " == *" $d "* ]]; then
+            result="${result:+$result }$d"
+        fi
+    done
+    echo "$result"
+}
+
 init_eval_common() {
     local default_output_dirs="${1:-}"
 
-    TEST_SET_DIR="${TEST_SET_DIR:-./datasets/REAL-T/DEV}"
+    TEST_SET_DIR="${TEST_SET_DIR:-./datasets/REAL-T-eval/EVAL}"
     MAPPING_CSV_NAME="${MAPPING_CSV_NAME:-tse_audio_mapping.csv}"
     EVAL_METRICS_SUBDIR="${EVAL_METRICS_SUBDIR:-eval_metrics}"
     USE_GPU="${USE_GPU:-1}"
+
+    if [ -z "${DATASETS:-}" ] && [ -d "$TEST_SET_DIR" ]; then
+        DATASETS="$(auto_detect_datasets "$TEST_SET_DIR")"
+        if [ -n "$DATASETS" ]; then
+            echo "[auto-detect] DATASETS from ${TEST_SET_DIR}: ${DATASETS}"
+        fi
+    fi
     DATASETS="${DATASETS:-AliMeeting AISHELL-4 AMI DipCo CHiME6}"
 
     EVAL_METRICS_SUBDIR="${EVAL_METRICS_SUBDIR#/}"
@@ -30,8 +65,6 @@ init_eval_common() {
         exit 1
     fi
 
-    # Normalize output dirs to their physical paths so symlinked output roots
-    # work the same way as regular directories across all eval scripts.
     local normalized_output_dirs=()
     local output_dir=""
     for output_dir in "${OUTPUT_DIR_LIST[@]}"; do

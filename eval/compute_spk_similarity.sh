@@ -4,8 +4,7 @@ set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
-TEST_SET_DIR="${TEST_SET_DIR:-./datasets/REAL-T/DEV}"
-MAPPING_CSV="${MAPPING_CSV:-./datasets/REAL-T/mapping.csv}"
+MAPPING_CSV="${MAPPING_CSV:-./datasets/REAL-T-eval/mapping.csv}"
 WESPEAKER_LANG="${WESPEAKER_LANG:-en}"
 WESPEAKER_PROVIDER="${WESPEAKER_PROVIDER:-auto}"
 WESPEAKER_DATASET_LANG_OVERRIDES="${WESPEAKER_DATASET_LANG_OVERRIDES:-AISHELL-4:chs,AliMeeting:chs}"
@@ -13,7 +12,7 @@ MAX_SAMPLES="${MAX_SAMPLES:-}"
 NUM_WORKERS="${NUM_WORKERS:-1}"
 SPK_SIM_PAIR_MODE="${SPK_SIM_PAIR_MODE:-tse_enrol}"
 
-init_eval_common "./output/DEV/bsrnn_vox1"
+init_eval_common
 
 if [ "$SPK_SIM_PAIR_MODE" != "tse_enrol" ] && [ "$SPK_SIM_PAIR_MODE" != "mixture_enrol" ]; then
     echo "Invalid SPK_SIM_PAIR_MODE=$SPK_SIM_PAIR_MODE (must be tse_enrol or mixture_enrol)."
