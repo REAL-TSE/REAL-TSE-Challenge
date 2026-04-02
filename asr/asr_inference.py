@@ -1,8 +1,18 @@
 import argparse
 import os
+
+os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+
 import pandas as pd
+import torch
 from tqdm import tqdm
 from asr_models import WhisperASR, FireRedASR_AED_L_ASRModel
+
+torch.backends.cudnn.benchmark = False
+torch.backends.cudnn.deterministic = True
+torch.use_deterministic_algorithms(True)
+torch.backends.cuda.matmul.allow_tf32 = False
+torch.backends.cudnn.allow_tf32 = False
 
 language = {
     'CHiME6': 'en',

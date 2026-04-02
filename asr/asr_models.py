@@ -42,6 +42,7 @@ class WhisperASR:
         model_source = model_path if os.path.isdir(model_path) else model_name
         self.processor = WhisperProcessor.from_pretrained(model_source, task="transcribe")
         self.model = WhisperForConditionalGeneration.from_pretrained(model_source).to(self.device)
+        self.model.eval()
 
     def transcribe_audio(self, audio_path, language="en"):
 
