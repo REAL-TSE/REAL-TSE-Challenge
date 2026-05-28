@@ -79,8 +79,11 @@ def main() -> None:
         type=str,
         required=True,
         help=(
-            "ASR Model to use. Built-in: zipformer-en, zipformer-zh. "
-            "See asr/registry.py for aliases."
+            "ASR Model to use. Built-in: zipformer-en, zipformer-zh "
+            "(default Zipformer pair used for the reported metrics), "
+            "plus whisper-large-v2 (English) and FireRedASR-AED-L "
+            "(Chinese) for backwards compatibility. See asr/registry.py "
+            "for aliases."
         ),
     )
     parser.add_argument(

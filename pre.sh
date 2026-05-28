@@ -62,6 +62,27 @@ finally:
 PY
 }
 
+download_hf_snapshot_if_needed() {
+    # Download a HuggingFace repo snapshot into ${save_root}/$(basename repo_id).
+    local repo_id="$1"
+    local save_root="$2"
+    local target_dir="${save_root}/$(basename "$repo_id")"
+    mkdir -p "$target_dir"
+    if [ -n "$(ls -A "$target_dir" 2>/dev/null)" ]; then
+        echo "[Skip] HF model already exists: ${target_dir}"
+        return
+    fi
+
+    python3 - "$repo_id" "$target_dir" <<'PY'
+import sys
+from huggingface_hub import snapshot_download
+
+repo_id, target_dir = sys.argv[1], sys.argv[2]
+snapshot_download(repo_id=repo_id, local_dir=target_dir)
+print(f"[Saved] {repo_id} -> {target_dir}")
+PY
+}
+
 download_firered_vad_if_needed() {
     local repo_id="$1"
     local save_dir="$2"
@@ -112,11 +133,15 @@ PY
 # ---- Model download switches (all default to enabled) ----
 REALT_PREP_DOWNLOAD_ZIPFORMER_EN="${REALT_PREP_DOWNLOAD_ZIPFORMER_EN:-1}"
 REALT_PREP_DOWNLOAD_ZIPFORMER_ZH="${REALT_PREP_DOWNLOAD_ZIPFORMER_ZH:-1}"
+REALT_PREP_DOWNLOAD_FIRERED_ASR="${REALT_PREP_DOWNLOAD_FIRERED_ASR:-1}"
+REALT_PREP_DOWNLOAD_WHISPER="${REALT_PREP_DOWNLOAD_WHISPER:-1}"
 REALT_PREP_DOWNLOAD_FIRERED_VAD="${REALT_PREP_DOWNLOAD_FIRERED_VAD:-1}"
 REALT_PREP_DOWNLOAD_DNSMOS="${REALT_PREP_DOWNLOAD_DNSMOS:-1}"
 
 require_binary_flag "REALT_PREP_DOWNLOAD_ZIPFORMER_EN" "$REALT_PREP_DOWNLOAD_ZIPFORMER_EN"
 require_binary_flag "REALT_PREP_DOWNLOAD_ZIPFORMER_ZH" "$REALT_PREP_DOWNLOAD_ZIPFORMER_ZH"
+require_binary_flag "REALT_PREP_DOWNLOAD_FIRERED_ASR" "$REALT_PREP_DOWNLOAD_FIRERED_ASR"
+require_binary_flag "REALT_PREP_DOWNLOAD_WHISPER" "$REALT_PREP_DOWNLOAD_WHISPER"
 require_binary_flag "REALT_PREP_DOWNLOAD_FIRERED_VAD" "$REALT_PREP_DOWNLOAD_FIRERED_VAD"
 require_binary_flag "REALT_PREP_DOWNLOAD_DNSMOS" "$REALT_PREP_DOWNLOAD_DNSMOS"
 
@@ -124,6 +149,10 @@ require_binary_flag "REALT_PREP_DOWNLOAD_DNSMOS" "$REALT_PREP_DOWNLOAD_DNSMOS"
 ZIPFORMER_EN_RELEASE="${REALT_ZIPFORMER_EN_RELEASE:-sherpa-onnx-zipformer-gigaspeech-2023-12-12}"
 ZIPFORMER_ZH_RELEASE="${REALT_ZIPFORMER_ZH_RELEASE:-sherpa-onnx-zipformer-multi-zh-hans-2023-9-2}"
 ZIPFORMER_SAVE_ROOT="${REALT_ZIPFORMER_SAVE_ROOT:-./zipformer/pretrained_models}"
+FIRERED_ASR_REPO_ID="${REALT_FIRERED_ASR_REPO_ID:-FireRedTeam/FireRedASR-AED-L}"
+FIRERED_ASR_SAVE_ROOT="${REALT_FIRERED_ASR_SAVE_ROOT:-./FireRedASR/pretrained_models}"
+WHISPER_REPO_ID="${REALT_WHISPER_REPO_ID:-openai/whisper-large-v2}"
+WHISPER_SAVE_ROOT="${REALT_WHISPER_SAVE_ROOT:-./whisper/pretrained_models}"
 FIRERED_VAD_REPO_ID="${REALT_FIRERED_VAD_REPO_ID:-xukaituo/FireRedVAD}"
 FIRERED_VAD_SAVE_DIR="${REALT_FIRERED_VAD_SAVE_DIR:-./FireRedASR2S/pretrained_models/FireRedVAD}"
 DNSMOS_HF_REPO_ID="${REALT_DNSMOS_REPO_ID:-Vyvo-Research/dnsmos}"
@@ -139,6 +168,18 @@ if [ "$REALT_PREP_DOWNLOAD_ZIPFORMER_ZH" = "1" ]; then
     download_zipformer_if_needed "$ZIPFORMER_ZH_RELEASE" "$ZIPFORMER_SAVE_ROOT"
 else
     echo "[Skip] Zipformer-ZH download disabled by REALT_PREP_DOWNLOAD_ZIPFORMER_ZH=0"
+fi
+
+if [ "$REALT_PREP_DOWNLOAD_FIRERED_ASR" = "1" ]; then
+    download_hf_snapshot_if_needed "$FIRERED_ASR_REPO_ID" "$FIRERED_ASR_SAVE_ROOT"
+else
+    echo "[Skip] FireRedASR download disabled by REALT_PREP_DOWNLOAD_FIRERED_ASR=0"
+fi
+
+if [ "$REALT_PREP_DOWNLOAD_WHISPER" = "1" ]; then
+    download_hf_snapshot_if_needed "$WHISPER_REPO_ID" "$WHISPER_SAVE_ROOT"
+else
+    echo "[Skip] Whisper download disabled by REALT_PREP_DOWNLOAD_WHISPER=0"
 fi
 
 if [ "$REALT_PREP_DOWNLOAD_FIRERED_VAD" = "1" ]; then

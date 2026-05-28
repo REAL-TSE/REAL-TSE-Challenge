@@ -46,7 +46,9 @@ git clone https://github.com/REAL-TSE/REAL-TSE-Challenge.git
 cd REAL-TSE-Challenge
 
 # install submodules (wesep + FireRedASR2S; FireRedASR2S provides FireRedVAD
-# for the timing evaluation, NOT for ASR transcription)
+# for the timing evaluation, NOT for ASR transcription. The FireRedASR
+# Python package used by the optional FireRedASR-AED-L ASR backend is
+# vendored under ./FireRedASR/ and does NOT need a separate clone.)
 git submodule update --init --recursive
 ```
 
@@ -62,27 +64,40 @@ pip install --force-reinstall --no-deps onnxruntime-gpu==1.19.2
 
 `requirements.txt` is the only supported Python dependency entrypoint for this repo. For RTX 5090 / `sm_120`, it resolves the `cu128` PyTorch wheels automatically. If you encounter any issues, try using `requirements2.txt` instead. `wespeaker` remains the only GitHub dependency because local `wesep` imports it directly.
 
-The ASR layer uses [`sherpa-onnx`](https://github.com/k2-fsa/sherpa-onnx) (CPU
+The default ASR layer uses [`sherpa-onnx`](https://github.com/k2-fsa/sherpa-onnx) (CPU
 ONNX runtime) to drive the Zipformer transducers, and
 [`whisper-normalizer`](https://pypi.org/project/whisper-normalizer/) for
-text normalization in TER (no Whisper checkpoint needed). Both packages
-are already pinned in `requirements.txt`.
+text normalization in TER (no Whisper checkpoint needed for normalization).
+Both packages are already pinned in `requirements.txt`.
 
-All top-level scripts source `env_setup.sh` by default. That helper activates `REAL-T` and appends the local `FireRedASR2S` / `wesep` paths automatically. If you want to use a different env name temporarily, run them with `REALT_CONDA_ENV=<your_env_name>`.
+The optional Whisper-large-v2 (English) and FireRedASR-AED-L (Chinese)
+ASR backends, kept for backwards compatibility with the original
+configuration, rely on `transformers` / `kaldiio` / `sentencepiece` /
+`kaldi-native-fbank` etc. — these are also already pinned in
+`requirements.txt`, so no extra install step is needed.
+
+All top-level scripts source `env_setup.sh` by default. That helper activates `REAL-T` and appends the local `FireRedASR` / `FireRedASR2S` / `wesep` paths automatically. If you want to use a different env name temporarily, run them with `REALT_CONDA_ENV=<your_env_name>`.
 
 ### 2.3 Set up Linux PATH and PYTHONPATH
 
 > Please replace `$PWD` below with the absolute path to this project (REAL-T repo root).
 
-**FireRedASR2S** (FireRedVAD, used by the timing evaluation only) is expected under the REAL-T repo root. Initialize/update the submodules first, then add its repo root to `PYTHONPATH` so `import fireredasr2s` works:
+**FireRedASR2S** (FireRedVAD, used by the timing evaluation only) and
+**FireRedASR** (used by the optional `FireRedASR-AED-L` ASR backend) are
+both expected under the REAL-T repo root. Initialize/update the
+submodules first, then add the relevant repo roots to `PYTHONPATH`:
 
 ```
+$ export PATH=$PWD/FireRedASR/fireredasr/:$PWD/FireRedASR/fireredasr/utils/:$PATH
+$ export PYTHONPATH=$PWD/FireRedASR/:$PYTHONPATH
 $ export PYTHONPATH=$PWD/FireRedASR2S/:$PYTHONPATH
 $ export PYTHONPATH=$PWD/wesep_real_tse/:$PYTHONPATH
 ```
 
-ASR transcription itself does **not** require any extra `PYTHONPATH`
-entry — `sherpa-onnx` is a regular pip package.
+The default Zipformer ASR backend (`zipformer-en` / `zipformer-zh`)
+itself does **not** require any extra `PYTHONPATH` entry — `sherpa-onnx`
+is a regular pip package. The `FireRedASR` entry above is only needed
+when you switch to the optional `FireRedASR-AED-L` Chinese ASR backend.
 
 
 ### 2.4 Prepare Dataset and Checkpoints
@@ -105,11 +120,13 @@ When additional splits (e.g. EVAL) are released, copy them alongside (e.g. `./da
 bash -i ./pre.sh
 ```
 
-`pre.sh` supports 4 optional switches (all default to `1`):
+`pre.sh` supports 6 optional switches (all default to `1`):
 
 - `REALT_PREP_PREPARE_DATASET`
 - `REALT_PREP_DOWNLOAD_ZIPFORMER_EN`
 - `REALT_PREP_DOWNLOAD_ZIPFORMER_ZH`
+- `REALT_PREP_DOWNLOAD_FIRERED_ASR`
+- `REALT_PREP_DOWNLOAD_WHISPER`
 - `REALT_PREP_DOWNLOAD_FIRERED_VAD`
 - `REALT_PREP_DOWNLOAD_DNSMOS`
 
@@ -117,10 +134,16 @@ After a default run, model weights are prepared at:
 
 - Zipformer-EN: `./zipformer/pretrained_models/sherpa-onnx-zipformer-gigaspeech-2023-12-12`
 - Zipformer-ZH: `./zipformer/pretrained_models/sherpa-onnx-zipformer-multi-zh-hans-2023-9-2`
+- FireRedASR-AED-L (optional, Chinese): `./FireRedASR/pretrained_models/FireRedASR-AED-L`
+- Whisper-large-v2 (optional, English): `./whisper/pretrained_models/whisper-large-v2`
 - FireRedVAD (timing eval only): `./FireRedASR2S/pretrained_models/FireRedVAD/VAD`
 - DNSMOS ONNX: `./DNSMOS/sig_bak_ovr.onnx` and `./DNSMOS/model_v8.onnx`
 
-Existing files are reused when possible, so repeated runs are safe.
+Existing files are reused when possible, so repeated runs are safe. If
+you only want the (smaller, ~290 MB each) Zipformer weights and want to
+skip the ~5 GB Whisper-large-v2 download, set
+`REALT_PREP_DOWNLOAD_WHISPER=0` and/or
+`REALT_PREP_DOWNLOAD_FIRERED_ASR=0` before running `pre.sh`.
 
 If you only need the Zipformer ASR weights without `pre.sh`, use the
 standalone helper:
@@ -188,6 +211,8 @@ bash ./run_eval.sh --output-dir ./output/DEV/tfmap_context_100 --test-set DEV --
 | `--output-dir`      | (required) Path to the TSE output directory to evaluate.                       |
 | `--test-set`        | (required) Evaluation split (e.g. `DEV`).                                      |
 | `--cuda`            | (required) CUDA device ID for GPU-accelerated evaluation.                      |
+| `--chinese-asr`     | (optional) ASR model for Chinese datasets. Default: `zipformer-zh`. Other: `FireRedASR-AED-L`. |
+| `--english-asr`     | (optional) ASR model for English datasets. Default: `zipformer-en`. Other: `whisper-large-v2`. |
 
 `run_eval.sh` supports three common usages:
 
@@ -203,6 +228,39 @@ bash ./run_eval.sh --output-dir ./output/DEV/tfmap_context_100 --test-set DEV --
 ```
 
 If no mode is provided, the default is `1 2`.
+
+#### Switching the ASR backend (optional)
+
+By default the TER evaluation uses `zipformer-zh` for Chinese datasets
+(AISHELL-4, AliMeeting) and `zipformer-en` for English datasets (AMI,
+CHiME6, DipCo). The original Whisper-large-v2 / FireRedASR-AED-L pair is
+still available and can be selected via CLI flags:
+
+```bash
+# Reproduce the historical setup (FireRedASR-AED-L for zh, Whisper-large-v2 for en)
+bash ./run_eval.sh --output-dir ./output/DEV/tfmap_context_100 --test-set DEV --cuda 0 \
+    --chinese-asr FireRedASR-AED-L --english-asr whisper-large-v2
+
+# Switch only the English side to Whisper-large-v2, keep zh on Zipformer
+bash ./run_eval.sh --output-dir ./output/DEV/tfmap_context_100 --test-set DEV --cuda 0 \
+    --english-asr whisper-large-v2
+```
+
+Predicted transcripts for each backend are written to a backend-named
+sub-directory under each TSE output (e.g. `<dataset>/zipformer-en/predicted.csv`
+vs `<dataset>/whisper-large-v2/predicted.csv`), so different backends can
+coexist without overwriting each other.
+
+> **Note on hallucination.** Whisper-large-v2 and FireRedASR-AED-L can
+> produce hallucinated repetitions / looped n-grams on long real-world
+> conversation audio (a well-known long-form Whisper failure mode, and a
+> similar issue empirically observed with FireRedASR-AED-L on REAL-T).
+> For this reason, the **final TER metric reported in this repo is
+> computed with Zipformer (`zipformer-zh` / `zipformer-en`)**, which we
+> found to be more stable on REAL-T. The Whisper / FireRedASR interfaces
+> are kept available behind `--chinese-asr` / `--english-asr` so that
+> the historical numbers can still be reproduced and the two backends
+> can be compared directly.
 
 By default, `run_eval.sh` runs:
 
@@ -254,14 +312,12 @@ We evaluate four BSRNN-based TSE models with different speaker information fusio
 
 | Model              | TER (zipformer-zh/en) | SIM (enrol-mixture) | SIM (enrol-tse) | DNSMOS SIG | DNSMOS BAK | DNSMOS OVRL | RATIO P | RATIO R | RATIO F1 |
 | ------------------ | --------------------- | ------------------- | --------------- | ---------- | ---------- | ----------- | ------- | ------- | -------- |
-| BSRNN_EMB          | 0.770                 | 0.506               | 0.501           | 2.15       | 1.90       | 1.66        | 0.780   | 0.946   | 0.841    |
-| BSRNN_EMB_CAUSAL   | 0.788                 | 0.506               | 0.492           | 2.09       | 1.92       | 1.63        | 0.781   | 0.920   | 0.829    |
-| BSRNN_TFMAP        | 0.766                 | 0.506               | 0.521           | 1.90       | 1.66       | 1.50        | 0.776   | 0.946   | 0.838    |
-| BSRNN_TFMAP_CAUSAL | 0.744                 | 0.506               | 0.535           | 1.99       | 1.72       | 1.56        | 0.779   | 0.952   | 0.844    |
+| BSRNN_EMB          | 0.639                 | 0.506               | 0.501           | 2.15       | 1.90       | 1.66        | 0.780   | 0.946   | 0.841    |
+| BSRNN_EMB_CAUSAL   | 0.655                 | 0.506               | 0.492           | 2.09       | 1.92       | 1.63        | 0.781   | 0.920   | 0.829    |
+| BSRNN_TFMAP        | 0.627                 | 0.506               | 0.521           | 1.90       | 1.66       | 1.50        | 0.776   | 0.946   | 0.838    |
+| BSRNN_TFMAP_CAUSAL | 0.592                 | 0.506               | 0.535           | 1.99       | 1.72       | 1.56        | 0.779   | 0.952   | 0.844    |
 
 </div>
-
-> Note: TER numbers in the table above are the historical FireRedASR/Whisper-based results. After switching the ASR backend to Zipformer the absolute values may shift; rerun `bash run_eval.sh ...` on your TSE outputs to get Zipformer-based numbers.
 
 
 ## 5. Citation
