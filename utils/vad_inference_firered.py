@@ -2,9 +2,12 @@ import argparse
 import json
 import os
 import sys
+import tempfile
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
+import soundfile as sf
 from tqdm import tqdm
 
 
@@ -34,6 +37,32 @@ def resolve_audio_path(audio_path: str, mapping_path: Path) -> str:
         return str(candidate)
     candidate = (mapping_path.parent / raw_path).resolve()
     return str(candidate)
+
+
+def peak_normalize_to_tmp(audio_path: str, peak: float = 0.8) -> str:
+    """Read an audio file, peak-normalize it to ``peak`` (default 0.8) by
+    uniform scaling, and write the normalized signal to a temporary wav file.
+
+    The scaling is ``wav *= peak / max(|wav|)`` so that the new peak
+    amplitude is exactly ``peak`` (this is peak normalization, not hard
+    clipping). For multi-channel audio a global ``max(|wav|)`` is used so
+    that the relative amplitude between channels is preserved. Silent
+    inputs (``max(|wav|) == 0``) are written without scaling to keep the
+    downstream flow uniform.
+
+    The temporary wav is saved with FLOAT subtype to avoid int16 quantization
+    noise that could affect VAD decisions. The caller is responsible for
+    removing the returned path once it is no longer needed.
+    """
+    wav, sr = sf.read(audio_path, always_2d=False)
+    wav = np.asarray(wav, dtype=np.float32)
+    max_abs = float(np.max(np.abs(wav))) if wav.size > 0 else 0.0
+    if max_abs > 0:
+        wav = wav * (peak / max_abs)
+    tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+    tmp.close()
+    sf.write(tmp.name, wav, sr, subtype="FLOAT")
+    return tmp.name
 
 
 def main():
@@ -97,7 +126,16 @@ def main():
         if not os.path.exists(audio_path):
             raise FileNotFoundError(f"Audio file does not exist: {audio_path}")
 
-        result, _ = vad.detect(audio_path)
+        # Peak-normalize the audio to 0.8 before feeding it into FireRedVAD,
+        # then remove the temporary file regardless of success or failure.
+        norm_audio_path = peak_normalize_to_tmp(audio_path, peak=0.9)
+        try:
+            result, _ = vad.detect(norm_audio_path)
+        finally:
+            try:
+                os.remove(norm_audio_path)
+            except OSError:
+                pass
         pred_segments = result.get("timestamps", [])
         results.append(
             {
