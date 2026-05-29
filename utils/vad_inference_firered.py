@@ -2,7 +2,6 @@ import argparse
 import json
 import os
 import sys
-import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -39,30 +38,38 @@ def resolve_audio_path(audio_path: str, mapping_path: Path) -> str:
     return str(candidate)
 
 
-def peak_normalize_to_tmp(audio_path: str, peak: float = 0.8) -> str:
-    """Read an audio file, peak-normalize it to ``peak`` (default 0.8) by
-    uniform scaling, and write the normalized signal to a temporary wav file.
+def peak_normalize_audio(audio_path: str, peak: float = 0.9):
+    """Read an audio file and peak-normalize it to ``peak`` in the float
+    domain by uniform scaling, then convert it back to int16 PCM range so
+    that it can be fed directly into FireRedVAD.
 
-    The scaling is ``wav *= peak / max(|wav|)`` so that the new peak
-    amplitude is exactly ``peak`` (this is peak normalization, not hard
-    clipping). For multi-channel audio a global ``max(|wav|)`` is used so
-    that the relative amplitude between channels is preserved. Silent
-    inputs (``max(|wav|) == 0``) are written without scaling to keep the
-    downstream flow uniform.
+    FireRedVAD's ``AudioFeat`` reads files with ``sf.read(..., dtype="int16")``
+    and the downstream kaldi-style fbank / cmvn are calibrated for that
+    amplitude scale. To preserve this scale while still applying our peak
+    normalization, we scale in the float ``[-1, 1]`` domain first (so that
+    the new peak amplitude is exactly ``peak``) and then multiply by 32767
+    and cast to int16.
 
-    The temporary wav is saved with FLOAT subtype to avoid int16 quantization
-    noise that could affect VAD decisions. The caller is responsible for
-    removing the returned path once it is no longer needed.
+    Multi-channel inputs are mixed down to mono by averaging across
+    channels (FireRedVAD's fbank requires a 1-D waveform). Silent inputs
+    (``max(|wav|) == 0``) are returned as zeros, skipping the scaling but
+    keeping a uniform downstream flow.
+
+    Returns
+    -------
+    (sample_rate, wav_int16) : tuple
+        Ready to be passed as ``vad.detect((sr, wav_int16))``. Using the
+        tuple form makes ``AudioFeat`` assert ``sr == 16000`` instead of
+        silently assuming 16 kHz when a bare ndarray is given.
     """
-    wav, sr = sf.read(audio_path, always_2d=False)
-    wav = np.asarray(wav, dtype=np.float32)
+    wav, sr = sf.read(audio_path, always_2d=False, dtype="float32")
+    if wav.ndim > 1:  # mix-down to mono, fbank requires a 1-D waveform
+        wav = wav.mean(axis=1)
     max_abs = float(np.max(np.abs(wav))) if wav.size > 0 else 0.0
     if max_abs > 0:
         wav = wav * (peak / max_abs)
-    tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
-    tmp.close()
-    sf.write(tmp.name, wav, sr, subtype="FLOAT")
-    return tmp.name
+    wav_int16 = np.clip(wav * 32767.0, -32768, 32767).astype(np.int16)
+    return sr, wav_int16
 
 
 def main():
@@ -126,16 +133,12 @@ def main():
         if not os.path.exists(audio_path):
             raise FileNotFoundError(f"Audio file does not exist: {audio_path}")
 
-        # Peak-normalize the audio to 0.8 before feeding it into FireRedVAD,
-        # then remove the temporary file regardless of success or failure.
-        norm_audio_path = peak_normalize_to_tmp(audio_path, peak=0.9)
-        try:
-            result, _ = vad.detect(norm_audio_path)
-        finally:
-            try:
-                os.remove(norm_audio_path)
-            except OSError:
-                pass
+        # Peak-normalize in the float domain to 0.9, then feed the
+        # int16 PCM tuple directly into FireRedVAD. Passing a (sr, wav)
+        # tuple lets AudioFeat assert sr == 16000 instead of silently
+        # assuming 16 kHz when a bare ndarray is given.
+        sr_wav = peak_normalize_audio(audio_path, peak=0.9)
+        result, _ = vad.detect(sr_wav)
         pred_segments = result.get("timestamps", [])
         results.append(
             {
