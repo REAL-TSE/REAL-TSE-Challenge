@@ -5,12 +5,13 @@ set -euo pipefail
 ORIG_CWD="$(pwd)"
 REAL_T_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${REAL_T_ROOT}/env_setup.sh"
+source "${REAL_T_ROOT}/utils/dataset_paths.sh"
 
 usage() {
     cat <<'EOF'
 Usage:
-  bash ./run_eval.sh --output-dir <path> --test-set <DEV|EVAL> --cuda <id> \
-                     [--chinese-asr <name>] [--english-asr <name>] [1] [2]
+  bash ./run_eval.sh --output-dir <path> --test-set <DEV|EVAL1|EVAL2> --cuda <id> \
+                     [--dataset-root <path>] [--chinese-asr <name>] [--english-asr <name>] [1] [2]
 
 Modes:
   1    Run all evaluation sub-scripts
@@ -37,6 +38,7 @@ EOF
 OUTPUT_DIR=""
 TEST_SET=""
 CUDA_ID=""
+DATASET_ROOT=""
 CHINESE_ASR_OVERRIDE=""
 ENGLISH_ASR_OVERRIDE=""
 MODES=()
@@ -53,6 +55,10 @@ while [ $# -gt 0 ]; do
             ;;
         --cuda)
             CUDA_ID="${2:-}"
+            shift 2
+            ;;
+        --dataset-root)
+            DATASET_ROOT="${2:-}"
             shift 2
             ;;
         --chinese-asr)
@@ -95,27 +101,20 @@ if [[ "$OUTPUT_DIR" != /* ]]; then
     OUTPUT_DIR="$(cd "$ORIG_CWD" && cd "$(dirname "$OUTPUT_DIR")" && pwd)/$(basename "$OUTPUT_DIR")"
 fi
 
-if [ "$TEST_SET" != "EVAL" ] && [ "$TEST_SET" != "DEV" ]; then
-    echo "--test-set must be DEV or EVAL."
-    exit 1
-fi
+validate_test_set "$TEST_SET" || exit 1
 
 if [ ! -d "$OUTPUT_DIR" ]; then
     echo "Output directory not found: $OUTPUT_DIR"
     exit 1
 fi
 
-DATASET_ROOT="./datasets/REAL-T-$(echo "$TEST_SET" | tr '[:upper:]' '[:lower:]')"
-TEST_SET_DIR="${DATASET_ROOT}/${TEST_SET}"
-if [ ! -d "$TEST_SET_DIR" ]; then
-    echo "Test set directory not found: $TEST_SET_DIR"
-    exit 1
-fi
+resolve_dataset_paths "$TEST_SET" "$DATASET_ROOT"
+verify_test_set_dir "$TEST_SET_DIR" "$DATASET_ROOT" || exit 1
 
 export CUDA_VISIBLE_DEVICES="$CUDA_ID"
 export OUTPUT_DIRS="$OUTPUT_DIR"
 export TEST_SET_DIR
-export MAPPING_CSV="${DATASET_ROOT}/mapping.csv"
+export MAPPING_CSV
 export USE_GPU=1
 export ASR_DEVICE="cuda:0"
 export WESPEAKER_PROVIDER="cuda"
@@ -143,8 +142,9 @@ run_stage() {
 run_pipeline() {
     echo "Running full eval pipeline"
     echo "  output_dir : $OUTPUT_DIR"
-    echo "  test_set : $TEST_SET"
-    echo "  cuda     : $CUDA_VISIBLE_DEVICES"
+    echo "  test_set   : $TEST_SET"
+    echo "  dataset    : $TEST_SET_DIR"
+    echo "  cuda       : $CUDA_VISIBLE_DEVICES"
     echo "  metrics  : ${EVAL_METRICS_SUBDIR:-.}"
     echo "  ASR (zh) : ${CHINESE_ASR_MODEL:-zipformer-zh (default)}"
     echo "  ASR (en) : ${ENGLISH_ASR_MODEL:-zipformer-en (default)}"

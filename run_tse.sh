@@ -1,25 +1,28 @@
 #!/bin/bash
 
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/env_setup.sh"
+REAL_T_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${REAL_T_ROOT}/env_setup.sh"
+source "${REAL_T_ROOT}/utils/dataset_paths.sh"
 
 usage() {
     cat <<'EOF'
 Usage:
-  bash ./run_tse.sh --model <name> --test-set <DEV|EVAL> [options]
+  bash ./run_tse.sh --model <name> --test-set <DEV|EVAL1|EVAL2> [options]
 
 Required:
   --model         TSE model name (e.g. tfmap_context_100)
-  --test-set      Evaluation split: DEV or EVAL
+  --test-set      Evaluation split: DEV, EVAL1, or EVAL2
 
 Optional:
   --device        Inference device (default: cuda)
   --model-dir     Directory containing model checkpoints (default: ./pretrained)
-  --dataset-root  Root of the REAL-T dataset (default: ./datasets/REAL-T-{dev|eval})
+  --dataset-root  Root of the REAL-T dataset (default: ./datasets/REAL-T-{dev|eval1|eval2})
   --output-root   Root output directory (default: ./output)
 
 Example:
   bash ./run_tse.sh --model tfmap_context_100 --test-set DEV
-  bash ./run_tse.sh --model tfmap_context_100 --test-set EVAL --device cuda
+  bash ./run_tse.sh --model tfmap_context_100 --test-set EVAL1 --device cuda
+  bash ./run_tse.sh --model tfmap_context_100 --test-set EVAL2 --device cuda
 EOF
 }
 
@@ -54,22 +57,10 @@ if [ -z "$MODEL_NAME" ] || [ -z "$TEST_SET" ]; then
     exit 1
 fi
 
-if [ "$TEST_SET" != "EVAL" ] && [ "$TEST_SET" != "DEV" ]; then
-    echo "Error: --test-set must be DEV or EVAL."
-    exit 1
-fi
+validate_test_set "$TEST_SET" || exit 1
 
-if [ -z "$DATASET_ROOT" ]; then
-    DATASET_ROOT="./datasets/REAL-T-$(echo "$TEST_SET" | tr '[:upper:]' '[:lower:]')"
-fi
-
-TEST_SET_DIR="${DATASET_ROOT}/${TEST_SET}"
-if [ ! -d "$TEST_SET_DIR" ]; then
-    echo "Test set directory not found: $TEST_SET_DIR"
-    echo "Available splits:"
-    ls -d "${DATASET_ROOT}"/*/ 2>/dev/null || echo "  (none)"
-    exit 1
-fi
+resolve_dataset_paths "$TEST_SET" "$DATASET_ROOT"
+verify_test_set_dir "$TEST_SET_DIR" "$DATASET_ROOT" || exit 1
 
 # Auto-detect datasets from meta CSVs in the test set directory
 DATASETS=()
