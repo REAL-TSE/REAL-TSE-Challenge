@@ -21,6 +21,8 @@ DATASET_LANGUAGE = {
     "AMI": "en",
     "CHiME6": "en",
     "DipCo": "en",
+    "unseen_CN": "zh",
+    "unseen_EN": "en",
 }
 
 
