@@ -15,6 +15,9 @@ DATASET_LANGUAGE: Dict[str, str] = {
     "AliMeeting": "zh",
     "AMI": "en",
     "DipCo": "en",
+    # EVAL2 unseen splits (language-tagged virtual datasets)
+    "unseen_CN": "zh",
+    "unseen_EN": "en",
 }
 
 

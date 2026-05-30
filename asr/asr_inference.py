@@ -45,7 +45,6 @@ except Exception:
 torch.backends.cuda.matmul.allow_tf32 = False
 torch.backends.cudnn.allow_tf32 = False
 
-
 # Keep the legacy module-level ``language`` dict for backwards compatibility
 # (some downstream scripts import it).
 language = DATASET_LANGUAGE
