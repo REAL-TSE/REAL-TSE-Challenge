@@ -137,7 +137,7 @@ def main():
         # int16 PCM tuple directly into FireRedVAD. Passing a (sr, wav)
         # tuple lets AudioFeat assert sr == 16000 instead of silently
         # assuming 16 kHz when a bare ndarray is given.
-        sr_wav = peak_normalize_audio(audio_path, peak=0.9)
+        sr,sr_wav = peak_normalize_audio(audio_path, peak=0.9)
         result, _ = vad.detect(sr_wav)
         pred_segments = result.get("timestamps", [])
         results.append(

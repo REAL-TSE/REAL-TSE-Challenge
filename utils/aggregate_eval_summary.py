@@ -408,7 +408,7 @@ def summarize_one_output_dir(
     )
 
     overall_values = merge_metric_maps(
-        to_metric_map(ter_overall, "scope", {"ter_whisper": "ter_whisper"}),
+        to_metric_map(ter_overall, "scope", {"ter_zipformer": "ter_zipformer"}),
         to_metric_map(sim_baseline_overall, "scope", {"sim_enrol_mixture": "sim_enrol_mixture"}),
         to_metric_map(sim_overall, "scope", {"sim_enrol_tse": "sim_enrol_tse"}),
         to_metric_map(
