@@ -4,7 +4,7 @@ set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
-MAPPING_CSV="${MAPPING_CSV:-./datasets/REAL-T-eval/mapping.csv}"
+MAPPING_CSV="${MAPPING_CSV:-./datasets/REAL-T-eval1/mapping.csv}"
 WESPEAKER_LANG="${WESPEAKER_LANG:-en}"
 WESPEAKER_PROVIDER="${WESPEAKER_PROVIDER:-auto}"
 WESPEAKER_DATASET_LANG_OVERRIDES="${WESPEAKER_DATASET_LANG_OVERRIDES:-AISHELL-4:chs,AliMeeting:chs}"
