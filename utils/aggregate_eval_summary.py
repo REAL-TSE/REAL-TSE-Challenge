@@ -291,10 +291,10 @@ def summarize_one_output_dir(
     )
 
     ter_dataset = mean_by_group(ter_work, "dataset", ["wer_or_cer"]).rename(
-        columns={"wer_or_cer": "ter_whisper"}
+        columns={"wer_or_cer": "ter_zipformer"}
     )
     ter_lang = mean_by_group(ter_work, "language", ["wer_or_cer"]).rename(
-        columns={"language": "lang", "wer_or_cer": "ter_whisper"}
+        columns={"language": "lang", "wer_or_cer": "ter_zipformer"}
     )
 
     sim_dataset = mean_by_group(sim_work, "dataset", ["speaker_cosine_similarity"]).rename(
@@ -337,7 +337,7 @@ def summarize_one_output_dir(
     )
 
     ter_overall = mean_overall(ter_work, ["wer_or_cer"], key_col="scope").rename(
-        columns={"wer_or_cer": "ter_whisper"}
+        columns={"wer_or_cer": "ter_zipformer"}
     )
     sim_overall = mean_overall(sim_work, ["speaker_cosine_similarity"], key_col="scope").rename(
         columns={"speaker_cosine_similarity": "sim_enrol_tse"}
@@ -358,7 +358,7 @@ def summarize_one_output_dir(
     )
 
     dataset_values = merge_metric_maps(
-        to_metric_map(ter_dataset, "dataset", {"ter_whisper": "ter_whisper"}),
+        to_metric_map(ter_dataset, "dataset", {"ter_zipformer": "ter_zipformer"}),
         to_metric_map(sim_baseline_dataset, "dataset", {"sim_enrol_mixture": "sim_enrol_mixture"}),
         to_metric_map(sim_dataset, "dataset", {"sim_enrol_tse": "sim_enrol_tse"}),
         to_metric_map(
@@ -383,7 +383,7 @@ def summarize_one_output_dir(
     )
 
     lang_values = merge_metric_maps(
-        to_metric_map(ter_lang, "lang", {"ter_whisper": "ter_whisper"}),
+        to_metric_map(ter_lang, "lang", {"ter_zipformer": "ter_zipformer"}),
         to_metric_map(sim_baseline_lang, "lang", {"sim_enrol_mixture": "sim_enrol_mixture"}),
         to_metric_map(sim_lang, "lang", {"sim_enrol_tse": "sim_enrol_tse"}),
         to_metric_map(
@@ -408,7 +408,7 @@ def summarize_one_output_dir(
     )
 
     overall_values = merge_metric_maps(
-        to_metric_map(ter_overall, "scope", {"ter_whisper": "ter_whisper"}),
+        to_metric_map(ter_overall, "scope", {"ter_zipformer": "ter_zipformer"}),
         to_metric_map(sim_baseline_overall, "scope", {"sim_enrol_mixture": "sim_enrol_mixture"}),
         to_metric_map(sim_overall, "scope", {"sim_enrol_tse": "sim_enrol_tse"}),
         to_metric_map(
@@ -440,7 +440,7 @@ def summarize_one_output_dir(
     overall_samples = {"overall": len(ter_work)}
 
     grouped_columns = [
-        ("TER", "fireredasr-1/whisper", "ter_whisper"),
+        ("TER", "zipformer-zh/en", "ter_zipformer"),
         ("SIM", "enrol-mixture", "sim_enrol_mixture"),
         ("SIM", "enrol-tse", "sim_enrol_tse"),
         ("DNSMOS", "SIG", "dnsmos_sig"),

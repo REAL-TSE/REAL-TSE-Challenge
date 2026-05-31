@@ -75,7 +75,7 @@ Expected outputs under each `OUTPUT_DIR`:
 Its columns are organized as grouped headers:
 
 - `TER`
-  - `fireredasr-1/whisper`
+  - `zipformer-zh/en`
 - `SIM`
   - `enrol-mixture`
   - `enrol-tse`
@@ -91,7 +91,7 @@ Its columns are organized as grouped headers:
 
 Current metric sources for the aggregated summary:
 
-- `TER / fireredasr-1/whisper`: mean `wer_or_cer` from `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_TER.csv`
+- `TER / zipformer-zh/en`: mean `wer_or_cer` from `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_TER.csv`
 - `SIM / enrol-mixture`: mean `speaker_cosine_similarity` from `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_spk_similarity_mixture_enrol.csv`
 - `SIM / enrol-tse`: mean `speaker_cosine_similarity` from `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_spk_similarity.csv`
 - `DNSMOS / *`: mean `SIG / BAK / OVRL / P808` from `${EVAL_METRICS_SUBDIR}/{OUTPUT_NAME}_dnsmos.csv`
@@ -102,8 +102,8 @@ Current metric sources for the aggregated summary:
 Evaluation requires:
 
 - REAL-T dataset
-- ASR model weights: `FireRedASR-AED-L`, `whisper-large-v2`
-- Timing-VAD model weights: `FireRedVAD`
+- ASR model weights: `zipformer-en` (sherpa-onnx-zipformer-gigaspeech-2023-12-12) and `zipformer-zh` (sherpa-onnx-zipformer-multi-zh-hans-2023-9-2)
+- Timing-VAD model weights: `FireRedVAD` (provided by FireRedASR2S; not used for ASR)
 - DNSMOS ONNX model weights
 
 ### Recommended: One-command preparation via `pre.sh`
@@ -138,8 +138,8 @@ If you already have a local dataset under `./datasets/REAL-T`, `pre.sh` will ski
 Optional switches (all default to `1`):
 
 - `REALT_PREP_PREPARE_DATASET`
-- `REALT_PREP_DOWNLOAD_FIRERED_ASR`
-- `REALT_PREP_DOWNLOAD_WHISPER`
+- `REALT_PREP_DOWNLOAD_ZIPFORMER_EN`
+- `REALT_PREP_DOWNLOAD_ZIPFORMER_ZH`
 - `REALT_PREP_DOWNLOAD_FIRERED_VAD`
 - `REALT_PREP_DOWNLOAD_DNSMOS`
 
@@ -147,8 +147,8 @@ Example: only prepare the local dataset archive + FireRedVAD
 
 ```bash
 REALT_DATASET_ARCHIVE_PATHS="/path/to/REAL-T-dev.tar.gz" \
-REALT_PREP_DOWNLOAD_FIRERED_ASR=0 \
-REALT_PREP_DOWNLOAD_WHISPER=0 \
+REALT_PREP_DOWNLOAD_ZIPFORMER_EN=0 \
+REALT_PREP_DOWNLOAD_ZIPFORMER_ZH=0 \
 REALT_PREP_DOWNLOAD_DNSMOS=0 \
 bash -i ./pre.sh
 ```
@@ -157,16 +157,21 @@ bash -i ./pre.sh
 
 Use the commands below when you want to fetch one component independently.
 
-### FireRedASR-AED-L + Whisper
+### Zipformer ASR Models (sherpa-onnx)
 
 ```bash
-mkdir -p ./FireRedASR/pretrained_models ./whisper/pretrained_models
-python3 ./utils/download_asr_model.py \
-  --zh_repo_id FireRedTeam/FireRedASR-AED-L \
-  --zh_save_dir ./FireRedASR/pretrained_models \
-  --en_repo_id openai/whisper-large-v2 \
-  --en_save_dir ./whisper/pretrained_models
+mkdir -p ./zipformer/pretrained_models
+python3 ./utils/download_zipformer.py
+# Or only one language:
+#   python3 ./utils/download_zipformer.py --only en
+#   python3 ./utils/download_zipformer.py --only zh
 ```
+
+Both models are streamed from the
+[k2-fsa/sherpa-onnx GitHub Releases](https://github.com/k2-fsa/sherpa-onnx/releases/tag/asr-models)
+(`sherpa-onnx-zipformer-gigaspeech-2023-12-12.tar.bz2`,
+`sherpa-onnx-zipformer-multi-zh-hans-2023-9-2.tar.bz2`, ~290 MB each)
+and extracted into `./zipformer/pretrained_models/<release_name>/`.
 
 ### FireRedVAD for Timing Eval
 
@@ -209,7 +214,7 @@ PY
 
 ### ASR TER
 
-`eval/transcribe_and_evaluation.sh` runs transcription and TER using `FireRedASR-AED-L` for Chinese datasets and `whisper-large-v2` for English datasets.
+`eval/transcribe_and_evaluation.sh` runs transcription and TER using `zipformer-zh` for Chinese datasets and `zipformer-en` for English datasets. Both backends are CPU-only sherpa-onnx Zipformer transducers; the `--device` flag is kept for API parity but does not enable a CUDA EP.
 
 ```bash
 # Only ASR

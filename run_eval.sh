@@ -9,19 +9,36 @@ source "${REAL_T_ROOT}/env_setup.sh"
 usage() {
     cat <<'EOF'
 Usage:
-  bash ./run_eval.sh --output-dir <path> --test-set <DEV|EVAL> --cuda <id> [1] [2]
+  bash ./run_eval.sh --output-dir <path> --test-set <DEV|EVAL> --cuda <id> \
+                     [--chinese-asr <name>] [--english-asr <name>] [1] [2]
 
 Modes:
   1    Run all evaluation sub-scripts
   2    Aggregate existing CSV results into <output_name>_summary.txt
 
 If no mode is provided, the default is: 1 2
+
+ASR backend selection (optional):
+  --chinese-asr     ASR model for Chinese datasets (AISHELL-4, AliMeeting).
+                    Default: zipformer-zh.
+                    Other supported: FireRedASR-AED-L
+  --english-asr     ASR model for English datasets (AMI, CHiME6, DipCo).
+                    Default: zipformer-en.
+                    Other supported: whisper-large-v2
+
+Note: the reported TER metrics in the README use the default Zipformer
+pair (zipformer-zh / zipformer-en). Whisper / FireRedASR remain available
+behind these flags for reproducing the historical numbers, but they can
+hallucinate (repeated n-grams / loops) on long real-world conversation
+audio, which is why Zipformer is the default for the final metric.
 EOF
 }
 
 OUTPUT_DIR=""
 TEST_SET=""
 CUDA_ID=""
+CHINESE_ASR_OVERRIDE=""
+ENGLISH_ASR_OVERRIDE=""
 MODES=()
 
 while [ $# -gt 0 ]; do
@@ -36,6 +53,14 @@ while [ $# -gt 0 ]; do
             ;;
         --cuda)
             CUDA_ID="${2:-}"
+            shift 2
+            ;;
+        --chinese-asr)
+            CHINESE_ASR_OVERRIDE="${2:-}"
+            shift 2
+            ;;
+        --english-asr)
+            ENGLISH_ASR_OVERRIDE="${2:-}"
             shift 2
             ;;
         -h|--help)
@@ -97,6 +122,16 @@ export WESPEAKER_PROVIDER="cuda"
 export DNSMOS_PROVIDER="cuda"
 export EVAL_METRICS_SUBDIR="${EVAL_METRICS_SUBDIR:-eval_metrics}"
 
+# Forward optional ASR backend overrides to transcribe_and_evaluation.sh
+# via the env-vars it already reads. Defaults (when neither flag nor env is
+# set) come from transcribe_and_evaluation.sh itself: zipformer-{zh,en}.
+if [ -n "$CHINESE_ASR_OVERRIDE" ]; then
+    export CHINESE_ASR_MODEL="$CHINESE_ASR_OVERRIDE"
+fi
+if [ -n "$ENGLISH_ASR_OVERRIDE" ]; then
+    export ENGLISH_ASR_MODEL="$ENGLISH_ASR_OVERRIDE"
+fi
+
 run_stage() {
     local label="$1"
     shift
@@ -111,6 +146,8 @@ run_pipeline() {
     echo "  test_set : $TEST_SET"
     echo "  cuda     : $CUDA_VISIBLE_DEVICES"
     echo "  metrics  : ${EVAL_METRICS_SUBDIR:-.}"
+    echo "  ASR (zh) : ${CHINESE_ASR_MODEL:-zipformer-zh (default)}"
+    echo "  ASR (en) : ${ENGLISH_ASR_MODEL:-zipformer-en (default)}"
 
     run_stage "TER" bash "${REAL_T_ROOT}/eval/transcribe_and_evaluation.sh" 1 2
     run_stage "TSE_TIMING" bash "${REAL_T_ROOT}/eval/vad_and_evaluation.sh" 1 2

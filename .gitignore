@@ -37,6 +37,8 @@ exp
 datasets
 datasets.tar.gz
 FireRedASR/pretrained_models/
+zipformer/pretrained_models/
+FireRedASR2S/
 whisper/pretrained_models/
 raw_wav
 tensorboard

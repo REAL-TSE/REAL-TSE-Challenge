@@ -4,7 +4,9 @@ import os
 import sys
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
+import soundfile as sf
 from tqdm import tqdm
 
 
@@ -34,6 +36,40 @@ def resolve_audio_path(audio_path: str, mapping_path: Path) -> str:
         return str(candidate)
     candidate = (mapping_path.parent / raw_path).resolve()
     return str(candidate)
+
+
+def peak_normalize_audio(audio_path: str, peak: float = 0.9):
+    """Read an audio file and peak-normalize it to ``peak`` in the float
+    domain by uniform scaling, then convert it back to int16 PCM range so
+    that it can be fed directly into FireRedVAD.
+
+    FireRedVAD's ``AudioFeat`` reads files with ``sf.read(..., dtype="int16")``
+    and the downstream kaldi-style fbank / cmvn are calibrated for that
+    amplitude scale. To preserve this scale while still applying our peak
+    normalization, we scale in the float ``[-1, 1]`` domain first (so that
+    the new peak amplitude is exactly ``peak``) and then multiply by 32767
+    and cast to int16.
+
+    Multi-channel inputs are mixed down to mono by averaging across
+    channels (FireRedVAD's fbank requires a 1-D waveform). Silent inputs
+    (``max(|wav|) == 0``) are returned as zeros, skipping the scaling but
+    keeping a uniform downstream flow.
+
+    Returns
+    -------
+    (sample_rate, wav_int16) : tuple
+        Ready to be passed as ``vad.detect((sr, wav_int16))``. Using the
+        tuple form makes ``AudioFeat`` assert ``sr == 16000`` instead of
+        silently assuming 16 kHz when a bare ndarray is given.
+    """
+    wav, sr = sf.read(audio_path, always_2d=False, dtype="float32")
+    if wav.ndim > 1:  # mix-down to mono, fbank requires a 1-D waveform
+        wav = wav.mean(axis=1)
+    max_abs = float(np.max(np.abs(wav))) if wav.size > 0 else 0.0
+    if max_abs > 0:
+        wav = wav * (peak / max_abs)
+    wav_int16 = np.clip(wav * 32767.0, -32768, 32767).astype(np.int16)
+    return sr, wav_int16
 
 
 def main():
@@ -97,7 +133,12 @@ def main():
         if not os.path.exists(audio_path):
             raise FileNotFoundError(f"Audio file does not exist: {audio_path}")
 
-        result, _ = vad.detect(audio_path)
+        # Peak-normalize in the float domain to 0.9, then feed the
+        # int16 PCM tuple directly into FireRedVAD. Passing a (sr, wav)
+        # tuple lets AudioFeat assert sr == 16000 instead of silently
+        # assuming 16 kHz when a bare ndarray is given.
+        sr,sr_wav = peak_normalize_audio(audio_path, peak=0.9)
+        result, _ = vad.detect(sr_wav)
         pred_segments = result.get("timestamps", [])
         results.append(
             {

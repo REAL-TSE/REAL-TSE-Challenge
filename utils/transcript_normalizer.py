@@ -1,27 +1,34 @@
-from pathlib import Path
+"""Light-weight transcript text normalizer.
 
-from transformers import WhisperTokenizer
+Originally backed by ``transformers.WhisperTokenizer`` (which required the
+Whisper-large-v2 checkpoint to be present). It now uses the
+``whisper-normalizer`` PyPI package, which ships only the textual
+normalization logic from OpenAI Whisper without any model weights.
 
+Kept separately from :mod:`asr_metrics` so that callers who only want a
+stateless text normalizer do not pull in opencc and the language-specific
+post-processing.
+"""
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-LOCAL_WHISPER_DIR = PROJECT_ROOT / "whisper" / "pretrained_models" / "whisper-large-v2"
-MODEL_NAME = "openai/whisper-large-v2"
-
-
-def _load_whisper_tokenizer() -> WhisperTokenizer:
-    if LOCAL_WHISPER_DIR.is_dir():
-        return WhisperTokenizer.from_pretrained(
-            str(LOCAL_WHISPER_DIR),
-            task="transcribe",
-            local_files_only=True,
-        )
-    return WhisperTokenizer.from_pretrained(MODEL_NAME, task="transcribe")
+from __future__ import annotations
 
 
-normalizer = _load_whisper_tokenizer()
+def _load_normalizer():
+    try:
+        from whisper_normalizer.english import EnglishTextNormalizer
+    except Exception as exc:  # pragma: no cover - import-time guard
+        raise ImportError(
+            "whisper-normalizer is required. "
+            "Install it via `pip install whisper-normalizer`."
+        ) from exc
+    return EnglishTextNormalizer()
 
-def normalize_text(transcript: str, normalizer = normalizer) -> str:
+
+normalizer = _load_normalizer()
+
+
+def normalize_text(transcript: str, normalizer=normalizer) -> str:
     transcript = transcript.replace("(", "").replace(")", "")
-    normalized_text = normalizer.normalize(transcript)
+    normalized_text = normalizer(transcript)
     cleaned_text = " ".join(normalized_text.split())
     return cleaned_text

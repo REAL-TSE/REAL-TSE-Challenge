@@ -7,8 +7,8 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 ASR_SCRIPT="${REAL_T_ROOT}/asr/asr_inference.py"
 EVAL_SCRIPT="${REAL_T_ROOT}/utils/asr_evaluation.py"
 
-CHINESE_ASR_MODEL="${CHINESE_ASR_MODEL:-FireRedASR-AED-L}"
-ENGLISH_ASR_MODEL="${ENGLISH_ASR_MODEL:-whisper-large-v2}"
+CHINESE_ASR_MODEL="${CHINESE_ASR_MODEL:-zipformer-zh}"
+ENGLISH_ASR_MODEL="${ENGLISH_ASR_MODEL:-zipformer-en}"
 ASR_DEVICE="${ASR_DEVICE:-cuda:0}"
 ASR_MAX_SAMPLES="${ASR_MAX_SAMPLES:-}"
 
