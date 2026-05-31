@@ -305,7 +305,7 @@ Detailed per-metric instructions, prerequisites, and optional visualization are 
 
 ## 4. Results
 
-We evaluate four BSRNN-based TSE models with different speaker information fusion strategies (speaker embedding vs. time-frequency featuremap interaction) and causality (causal vs. non-causal), all trained on Libri2Mix-100. The table below compares their performance on the DEV set.
+We evaluate four BSRNN-based TSE models with different speaker information fusion strategies (speaker embedding vs. time-frequency featuremap interaction) and causality (causal vs. non-causal), all trained on Libri2Mix-100. The table below compares their performance on the DEV set. EVAL1 and EVAL2 results are reported in the following subsections (see `{OUTPUT_NAME}_summary.txt` in each output directory).
 
 
 <div align="center">
@@ -316,6 +316,36 @@ We evaluate four BSRNN-based TSE models with different speaker information fusio
 | BSRNN_EMB_CAUSAL   | 0.705                 | 0.506               | 0.492           | 2.09       | 1.92       | 1.63        | 0.781   | 0.920   | 0.829    |
 | BSRNN_TFMAP        | 0.703                 | 0.506               | 0.521           | 1.90       | 1.66       | 1.50        | 0.776   | 0.946   | 0.838    |
 | BSRNN_TFMAP_CAUSAL | 0.652                 | 0.506               | 0.535           | 1.99       | 1.72       | 1.56        | 0.779   | 0.952   | 0.844    |
+
+</div>
+
+### 4.1 EVAL1
+
+EVAL1 split: AliMeeting, AMI, CHiME6, DipCo (2,000 samples).
+
+<div align="center">
+
+| Model              | TER (zipformer-zh/en) | SIM (enrol-mixture) | SIM (enrol-tse) | DNSMOS SIG | DNSMOS BAK | DNSMOS OVRL | RATIO P | RATIO R | RATIO F1 |
+| ------------------ | --------------------- | ------------------- | --------------- | ---------- | ---------- | ----------- | ------- | ------- | -------- |
+| BSRNN_EMB          | 0.816                 | 0.529               | 0.507           | 2.50       | 2.18       | 1.91        | 0.788   | 0.906   | 0.827    |
+| BSRNN_EMB_CAUSAL   | 0.806                 | 0.529               | 0.500           | 2.29       | 2.07       | 1.78        | 0.788   | 0.867   | 0.807    |
+| BSRNN_TFMAP        | 0.837                 | 0.529               | 0.535           | 2.26       | 1.95       | 1.75        | 0.783   | 0.905   | 0.822    |
+| BSRNN_TFMAP_CAUSAL | 0.801                 | 0.529               | 0.553           | 2.33       | 1.97       | 1.79        | 0.789   | 0.921   | 0.837    |
+
+</div>
+
+### 4.2 EVAL2
+
+EVAL2 split: unseen_CN, unseen_EN (3,000 samples).
+
+<div align="center">
+
+| Model              | TER (zipformer-zh/en) | SIM (enrol-mixture) | SIM (enrol-tse) | DNSMOS SIG | DNSMOS BAK | DNSMOS OVRL | RATIO P | RATIO R | RATIO F1 |
+| ------------------ | --------------------- | ------------------- | --------------- | ---------- | ---------- | ----------- | ------- | ------- | -------- |
+| BSRNN_EMB          | 0.838                 | 0.382               | 0.357           | 2.36       | 2.04       | 1.80        | 0.755   | 0.948   | 0.830    |
+| BSRNN_EMB_CAUSAL   | 0.811                 | 0.382               | 0.370           | 2.16       | 1.96       | 1.67        | 0.760   | 0.940   | 0.831    |
+| BSRNN_TFMAP        | 0.839                 | 0.382               | 0.382           | 1.94       | 1.68       | 1.52        | 0.750   | 0.961   | 0.833    |
+| BSRNN_TFMAP_CAUSAL | 0.808                 | 0.382               | 0.391           | 2.04       | 1.83       | 1.59        | 0.758   | 0.952   | 0.835    |
 
 </div>
 
