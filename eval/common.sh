@@ -37,7 +37,7 @@ filter_datasets() {
 init_eval_common() {
     local default_output_dirs="${1:-}"
 
-    TEST_SET_DIR="${TEST_SET_DIR:-./datasets/REAL-T-eval1/EVAL1}"
+    TEST_SET_DIR="${TEST_SET_DIR:-./datasets/REAL-T-dev/DEV}"
     MAPPING_CSV_NAME="${MAPPING_CSV_NAME:-tse_audio_mapping.csv}"
     EVAL_METRICS_SUBDIR="${EVAL_METRICS_SUBDIR:-eval_metrics}"
     USE_GPU="${USE_GPU:-1}"

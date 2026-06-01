@@ -30,7 +30,7 @@ Key features of REAL-T include:
 - **Multi-genre**: Covering diverse conversational scenarios
 - **Multi-enrollment**: Multiple enrollment utterance from different parts of the conversation
 
-REAL-T currently ships the **DEV** split with 5 datasets (AISHELL-4, AliMeeting, AMI, CHiME6, DipCo). An **EVAL** split will be released separately.
+REAL-T ships **DEV**, **EVAL1**, and **EVAL2** splits. DEV includes ground-truth references for local evaluation; EVAL1 and EVAL2 are for inference/submission only.
 
 Evaluations reveal that existing TSE models suffer significant performance degradation on REAL-T, highlighting the need for more robust approaches tailored to real conversational speech.
 
@@ -104,13 +104,15 @@ when you switch to the optional `FireRedASR-AED-L` Chinese ASR backend.
 
 #### Dataset
 
-Copy the `REAL-T-dev` folder into `./datasets/`:
+Copy the released REAL-T split folders into `./datasets/`:
 
 ```bash
 cp -r /path/to/REAL-T-dev ./datasets/REAL-T-dev
+cp -r /path/to/REAL-T-eval1 ./datasets/REAL-T-eval1
+cp -r /path/to/REAL-T-eval2 ./datasets/REAL-T-eval2
 ```
 
-When additional splits (e.g. EVAL) are released, copy them alongside (e.g. `./datasets/REAL-T-eval/`). All scripts auto-detect datasets from the split directory.
+All scripts auto-detect datasets from the split directory.
 
 #### One-Command Setup
 
@@ -120,30 +122,35 @@ When additional splits (e.g. EVAL) are released, copy them alongside (e.g. `./da
 bash -i ./pre.sh
 ```
 
-`pre.sh` supports 6 optional switches (all default to `1`):
+`pre.sh` supports these optional download switches:
 
-- `REALT_PREP_PREPARE_DATASET`
-- `REALT_PREP_DOWNLOAD_ZIPFORMER_EN`
-- `REALT_PREP_DOWNLOAD_ZIPFORMER_ZH`
-- `REALT_PREP_DOWNLOAD_FIRERED_ASR`
-- `REALT_PREP_DOWNLOAD_WHISPER`
-- `REALT_PREP_DOWNLOAD_FIRERED_VAD`
-- `REALT_PREP_DOWNLOAD_DNSMOS`
+- `REALT_PREP_DOWNLOAD_ZIPFORMER_EN` (default `1`)
+- `REALT_PREP_DOWNLOAD_ZIPFORMER_ZH` (default `1`)
+- `REALT_PREP_DOWNLOAD_FIRERED_ASR` (default `0`)
+- `REALT_PREP_DOWNLOAD_WHISPER` (default `0`)
+- `REALT_PREP_DOWNLOAD_FIRERED_VAD` (default `1`)
+- `REALT_PREP_DOWNLOAD_DNSMOS` (default `1`)
 
 After a default run, model weights are prepared at:
 
 - Zipformer-EN: `./zipformer/pretrained_models/sherpa-onnx-zipformer-gigaspeech-2023-12-12`
 - Zipformer-ZH: `./zipformer/pretrained_models/sherpa-onnx-zipformer-multi-zh-hans-2023-9-2`
-- FireRedASR-AED-L (optional, Chinese): `./FireRedASR/pretrained_models/FireRedASR-AED-L`
-- Whisper-large-v2 (optional, English): `./whisper/pretrained_models/whisper-large-v2`
 - FireRedVAD (timing eval only): `./FireRedASR2S/pretrained_models/FireRedVAD/VAD`
 - DNSMOS ONNX: `./DNSMOS/sig_bak_ovr.onnx` and `./DNSMOS/model_v8.onnx`
 
-Existing files are reused when possible, so repeated runs are safe. If
-you only want the (smaller, ~290 MB each) Zipformer weights and want to
-skip the ~5 GB Whisper-large-v2 download, set
-`REALT_PREP_DOWNLOAD_WHISPER=0` and/or
-`REALT_PREP_DOWNLOAD_FIRERED_ASR=0` before running `pre.sh`.
+Existing files are reused when possible, so repeated runs are safe. The
+optional Whisper-large-v2 and FireRedASR-AED-L ASR weights are not
+downloaded by default. Enable them only when you plan to run those
+backends:
+
+```bash
+REALT_PREP_DOWNLOAD_WHISPER=1 REALT_PREP_DOWNLOAD_FIRERED_ASR=1 bash -i ./pre.sh
+```
+
+When enabled, the optional ASR weights are prepared at:
+
+- FireRedASR-AED-L (optional, Chinese): `./FireRedASR/pretrained_models/FireRedASR-AED-L`
+- Whisper-large-v2 (optional, English): `./whisper/pretrained_models/whisper-large-v2`
 
 If you only need the Zipformer ASR weights without `pre.sh`, use the
 standalone helper:
@@ -175,10 +182,10 @@ This script runs TSE inference for multiple datasets using a specified model. Ea
 | **Argument**        | **Description**                                                                |
 | :------------------ | :----------------------------------------------------------------------------- |
 | `--model`           | (required) TSE model name, e.g. `tfmap_context_100`.                           |
-| `--test-set`        | (required) Evaluation split: `DEV` or `EVAL`.                                  |
+| `--test-set`        | (required) Evaluation split: `DEV` or `EVAL1` or `EVAL2`.                      |
 | `--device`          | Inference device. Default: `cuda`.                                             |
 | `--model-dir`       | Directory containing model checkpoints. Default: `./pretrained`.               |
-| `--dataset-root`    | Root of the REAL-T dataset. Default: `./datasets/REAL-T-{dev\|eval}`.          |
+| `--dataset-root`    | Root of the REAL-T dataset. Default: `./datasets/REAL-T-{dev\|eval1\|eval2}`.  |
 | `--output-root`     | Root output directory. Default: `./output`.                                    |
 
 
@@ -201,6 +208,11 @@ REAL-T/
 
 The recommended evaluation entrypoint is now `run_eval.sh` at the repo root. It runs the full evaluation pipeline sequentially on one `OUTPUT_DIR`, using one CUDA device for all stages.
 
+Local evaluation is only available for the **DEV** split. The released
+**EVAL1** and **EVAL2** splits do not include ground-truth references,
+so they are for inference/submission only and cannot be evaluated locally
+with `run_eval.sh`.
+
 ```bash
 cd REAL-TSE-Challenge
 bash ./run_eval.sh --output-dir ./output/DEV/tfmap_context_100 --test-set DEV --cuda 0
@@ -209,7 +221,7 @@ bash ./run_eval.sh --output-dir ./output/DEV/tfmap_context_100 --test-set DEV --
 | **Argument**        | **Description**                                                                |
 | :------------------ | :----------------------------------------------------------------------------- |
 | `--output-dir`      | (required) Path to the TSE output directory to evaluate.                       |
-| `--test-set`        | (required) Evaluation split (e.g. `DEV`).                                      |
+| `--test-set`        | (required) Evaluation split for local evaluation. Use `DEV`; `EVAL1`/`EVAL2` do not include ground truth. |
 | `--cuda`            | (required) CUDA device ID for GPU-accelerated evaluation.                      |
 | `--chinese-asr`     | (optional) ASR model for Chinese datasets. Default: `zipformer-zh`. Other: `FireRedASR-AED-L`. |
 | `--english-asr`     | (optional) ASR model for English datasets. Default: `zipformer-en`. Other: `whisper-large-v2`. |
@@ -299,13 +311,13 @@ Detailed per-metric instructions, prerequisites, and optional visualization are 
 
 ### 3.3 TSE Inference vs Eval
 
-- Use `run_tse.sh` for TSE inference.
-- Use `run_eval.sh` for the full evaluation pipeline.
-- Use scripts under `./eval/` only when you want to run individual evaluation sub-steps manually.
+- Use `run_tse.sh` for TSE inference on `DEV`, `EVAL1`, or `EVAL2`.
+- Use `run_eval.sh` for the full local evaluation pipeline on `DEV`.
+- Use scripts under `./eval/` only when you want to run individual DEV evaluation sub-steps manually.
 
 ## 4. Results
 
-We evaluate four BSRNN-based TSE models with different speaker information fusion strategies (speaker embedding vs. time-frequency featuremap interaction) and causality (causal vs. non-causal), all trained on Libri2Mix-100. The table below compares their performance on the DEV set. EVAL1 and EVAL2 results are reported in the following subsections (see `{OUTPUT_NAME}_summary.txt` in each output directory).
+We evaluate four BSRNN-based TSE models with different speaker information fusion strategies (speaker embedding vs. time-frequency featuremap interaction) and causality (causal vs. non-causal), all trained on Libri2Mix-100. The table below compares their performance on the DEV set. EVAL1 and EVAL2 tables are official reference results; the released EVAL1/EVAL2 splits do not include ground-truth references, so these scores cannot be regenerated locally with `run_eval.sh`.
 
 
 <div align="center">
