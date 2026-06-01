@@ -7,12 +7,14 @@ Run the full REAL-T evaluation pipeline from the repo root with one command:
 ```bash
 cd REAL-TSE-Challenge
 
-# Evaluate on DEV split (5 datasets)
+# Evaluate on DEV split (5 datasets with ground-truth references)
 bash ./run_eval.sh --output-dir ./output/DEV/BSRNN --test-set DEV --cuda 0
-
-# Evaluate on EVAL split (4 datasets)
-bash ./run_eval.sh --output-dir ./output/EVAL/BSRNN --test-set EVAL --cuda 0
 ```
+
+Local evaluation is only available for the **DEV** split. The released
+**EVAL1** and **EVAL2** splits do not include ground-truth references, so
+they are for inference/submission only and cannot be evaluated locally
+with `run_eval.sh`.
 
 `run_eval.sh` now supports top-level modes:
 
@@ -20,21 +22,21 @@ bash ./run_eval.sh --output-dir ./output/EVAL/BSRNN --test-set EVAL --cuda 0
 - `2`: regenerate the aggregated summary from existing CSV files only
 - `1 2`: run sub-scripts first, then generate the aggregated summary
 
-The `--test-set` flag accepts `EVAL` or `DEV`. The pipeline auto-detects
-which datasets are available from the `*_meta.csv` files in the test set
-directory, so it works seamlessly with either 4 or 5 datasets.
+For local evaluation, use `--test-set DEV`. The pipeline auto-detects
+which DEV datasets are available from the `*_meta.csv` files in the test
+set directory.
 
 Examples:
 
 ```bash
-# Run all sub-scripts, then summarize (EVAL)
-bash ./run_eval.sh --output-dir ./output/EVAL/BSRNN --test-set EVAL --cuda 0 1 2
+# Run all sub-scripts, then summarize
+bash ./run_eval.sh --output-dir ./output/DEV/BSRNN --test-set DEV --cuda 0 1 2
 
-# Only run all sub-scripts (DEV)
+# Only run all sub-scripts
 bash ./run_eval.sh --output-dir ./output/DEV/BSRNN --test-set DEV --cuda 0 1
 
 # Only summarize existing CSVs
-bash ./run_eval.sh --output-dir ./output/EVAL/BSRNN --test-set EVAL --cuda 0 2
+bash ./run_eval.sh --output-dir ./output/DEV/BSRNN --test-set DEV --cuda 0 2
 ```
 
 This sequentially runs:
@@ -48,8 +50,9 @@ This sequentially runs:
 ## Shared Conventions
 
 - All commands below are intended to be run from the REAL-T repo root.
-- `OUTPUT_DIRS` is a space-separated list of TSE output roots such as `./output/EVAL/BSRNN`.
-- `TEST_SET_DIR` should point to `./datasets/REAL-T-eval/EVAL` or `./datasets/REAL-T-dev/DEV`.
+- `OUTPUT_DIRS` is a space-separated list of TSE output roots such as `./output/DEV/BSRNN`.
+- `TEST_SET_DIR` should point to `./datasets/REAL-T-dev/DEV` for local evaluation.
+- `EVAL1` and `EVAL2` outputs can be generated with `run_tse.sh`, but they do not have local ground-truth references for `run_eval.sh`.
 - `DATASETS` is auto-detected from `*_meta.csv` in `TEST_SET_DIR` when not set explicitly.
 - All eval shell scripts source `env_setup.sh` automatically.
 - `run_eval.sh` sets one `CUDA_VISIBLE_DEVICES` value for the entire pipeline and forces ONNX-based stages onto CUDA with `WESPEAKER_PROVIDER=cuda` and `DNSMOS_PROVIDER=cuda`.
@@ -101,52 +104,46 @@ Current metric sources for the aggregated summary:
 
 Evaluation requires:
 
-- REAL-T dataset
+- REAL-T DEV dataset with ground-truth references
 - ASR model weights: `zipformer-en` (sherpa-onnx-zipformer-gigaspeech-2023-12-12) and `zipformer-zh` (sherpa-onnx-zipformer-multi-zh-hans-2023-9-2)
 - Timing-VAD model weights: `FireRedVAD` (provided by FireRedASR2S; not used for ASR)
 - DNSMOS ONNX model weights
 
 ### Recommended: One-command preparation via `pre.sh`
 
-`pre.sh` prepares a manually downloaded dataset plus all 4 model groups in one command (all enabled by default):
+Copy the released REAL-T split folders into `./datasets/`:
+
+```bash
+cp -r /path/to/REAL-T-dev ./datasets/REAL-T-dev
+cp -r /path/to/REAL-T-eval1 ./datasets/REAL-T-eval1
+cp -r /path/to/REAL-T-eval2 ./datasets/REAL-T-eval2
+```
+
+Then run `pre.sh` to regenerate mappings and prepare the default model
+groups in one command. Zipformer, FireRedVAD, and DNSMOS downloads are
+enabled by default; Whisper-large-v2 and FireRedASR-AED-L are disabled
+unless explicitly requested.
 
 ```bash
 bash -i ./pre.sh
 ```
 
-Place one or both archives under `./datasets/archives/`:
+`pre.sh` regenerates `mapping.csv` for all `./datasets/REAL-T-*/`
+directories it finds.
 
-- `REAL-T-dev.tar.gz` — DEV split (5 datasets) -> extracts to `./datasets/REAL-T-dev/`
-- `REAL-T-eval.tar.gz` — EVAL split (4 datasets, no AISHELL-4) -> extracts to `./datasets/REAL-T-eval/`
+Optional switches:
 
-```bash
-mkdir -p ./datasets/archives
-cp /path/to/REAL-T-dev.tar.gz  ./datasets/archives/
-cp /path/to/REAL-T-eval.tar.gz ./datasets/archives/
-```
+- `REALT_PREP_DOWNLOAD_ZIPFORMER_EN` (default `1`)
+- `REALT_PREP_DOWNLOAD_ZIPFORMER_ZH` (default `1`)
+- `REALT_PREP_DOWNLOAD_FIRERED_ASR` (default `0`)
+- `REALT_PREP_DOWNLOAD_WHISPER` (default `0`)
+- `REALT_PREP_DOWNLOAD_FIRERED_VAD` (default `1`)
+- `REALT_PREP_DOWNLOAD_DNSMOS` (default `1`)
 
-`pre.sh` auto-detects all archives and extracts them incrementally (both
-each archive extracts to its own directory). You can also pass archives
-explicitly:
-
-```bash
-REALT_DATASET_ARCHIVE_PATHS="/path/to/REAL-T-dev.tar.gz /path/to/REAL-T-eval.tar.gz" bash -i ./pre.sh
-```
-
-If you already have a local dataset under `./datasets/REAL-T`, `pre.sh` will skip extraction and still prepare mappings.
-
-Optional switches (all default to `1`):
-
-- `REALT_PREP_PREPARE_DATASET`
-- `REALT_PREP_DOWNLOAD_ZIPFORMER_EN`
-- `REALT_PREP_DOWNLOAD_ZIPFORMER_ZH`
-- `REALT_PREP_DOWNLOAD_FIRERED_VAD`
-- `REALT_PREP_DOWNLOAD_DNSMOS`
-
-Example: only prepare the local dataset archive + FireRedVAD
+Example: only download FireRedVAD when the other default model weights
+are already present:
 
 ```bash
-REALT_DATASET_ARCHIVE_PATHS="/path/to/REAL-T-dev.tar.gz" \
 REALT_PREP_DOWNLOAD_ZIPFORMER_EN=0 \
 REALT_PREP_DOWNLOAD_ZIPFORMER_ZH=0 \
 REALT_PREP_DOWNLOAD_DNSMOS=0 \
@@ -190,9 +187,11 @@ mkdir -p ./FireRedASR2S/pretrained_models/FireRedVAD
 python -c "from modelscope import snapshot_download; snapshot_download('xukaituo/FireRedVAD', local_dir='./FireRedASR2S/pretrained_models/FireRedVAD')"
 ```
 
-Timing evaluation also requires overlap JSON under `./datasets/REAL-T-{dev,eval}/<SPLIT>/json`.
+Timing evaluation also requires overlap JSON under
+`./datasets/REAL-T-dev/DEV/json`.
 
-If your dataset was prepared from the recommended manually downloaded archive via `bash -i ./pre.sh`, that directory is already included.
+If you copied the released `REAL-T-dev` folder, that directory is already
+included.
 
 
 ### DNSMOS

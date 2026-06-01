@@ -31,13 +31,14 @@ need to know the exact epoch number.
 
 ## Download
 
-### Option A — `pre.sh` (recommended, downloads everything)
+### Option A — `pre.sh` (recommended, downloads the default model set)
 
 ```bash
 bash -i ./pre.sh
 ```
 
-`pre.sh` toggles default to `1` for both Zipformer models. To disable one:
+`pre.sh` downloads both Zipformer models by default, along with the other
+default evaluation assets. To disable one Zipformer model:
 
 ```bash
 REALT_PREP_DOWNLOAD_ZIPFORMER_EN=0 bash -i ./pre.sh
