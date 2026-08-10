@@ -87,9 +87,20 @@ def _resolve_model_dir(model_path: Optional[str], default_name: str) -> Path:
 
 
 def _pick_first(paths_glob: list, model_dir: Path, label: str) -> Path:
-    """Return the first matching file under ``model_dir`` for one of the glob patterns."""
-    for pat in paths_glob:
+    """Return the first matching file under ``model_dir`` for one of the glob patterns.
+
+    Files that also match a later (lower-priority) pattern are excluded from
+    the current pattern so they get deferred to their most-specific match.
+    This prevents ``encoder*.onnx`` from swallowing ``encoder*.int8.onnx``
+    hits when fp32 is preferred.
+    """
+    for i, pat in enumerate(paths_glob):
         hits = sorted(model_dir.glob(pat))
+        if hits and i + 1 < len(paths_glob):
+            later_hits: set = set()
+            for later_pat in paths_glob[i + 1:]:
+                later_hits.update(model_dir.glob(later_pat))
+            hits = [h for h in hits if h not in later_hits]
         if hits:
             return hits[0]
     raise FileNotFoundError(
