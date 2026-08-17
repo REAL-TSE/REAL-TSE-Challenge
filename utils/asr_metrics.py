@@ -97,7 +97,6 @@ def normalizer_for_zh(transcript: str, option: Optional[str] = None) -> str:
 
 
 def normalizer_for_en(transcript: str, option: Optional[str] = None) -> str:
-    transcript = transcript.strip().replace("…", "")
     assert option in ("Predicted", "Ground Truth"), f"Invalid option: {option}"
 
     transcript = whisper_normalize(transcript, language="en")
