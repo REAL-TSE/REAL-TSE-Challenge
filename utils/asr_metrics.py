@@ -89,22 +89,18 @@ _ZH_CONVERTER = opencc.OpenCC("t2s")
 
 def normalizer_for_zh(transcript: str, option: Optional[str] = None) -> str:
     assert option in ("Predicted", "Ground Truth"), f"Invalid option: {option}"
-    if option == "Predicted":
-        transcript = whisper_normalize(transcript, language="zh")
-    # Ground truth path: leave numbers / punctuation as the dataset wrote them;
-    # we only normalize traditional -> simplified and re-space character-by-
-    # character to match the original behaviour.
+    
+    transcript = whisper_normalize(transcript, language="zh")
     transcript = _ZH_CONVERTER.convert(transcript)
     transcript = re.sub(r"\s+", "", transcript)
-    transcript = " ".join(transcript.strip())
     return transcript
 
 
 def normalizer_for_en(transcript: str, option: Optional[str] = None) -> str:
     transcript = transcript.strip().replace("…", "")
     assert option in ("Predicted", "Ground Truth"), f"Invalid option: {option}"
-    if option == "Predicted":
-        transcript = whisper_normalize(transcript, language="en")
+
+    transcript = whisper_normalize(transcript, language="en")
     transcript = transcript.replace(".", "")
     transcript = re.sub(r"\s+", " ", transcript.strip())
     return transcript.strip()
