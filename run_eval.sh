@@ -115,6 +115,15 @@ fi
 resolve_dataset_paths "$TEST_SET" "$DATASET_ROOT"
 verify_test_set_dir "$TEST_SET_DIR" "$DATASET_ROOT" || exit 1
 
+if [[ "$TEST_SET_DIR" != /* ]]; then
+    TEST_SET_DIR="$(cd "$ORIG_CWD" && cd "$TEST_SET_DIR" && pwd)"
+fi
+if [[ "$DATASET_ROOT" != /* ]]; then
+    DATASET_ROOT="$(cd "$ORIG_CWD" && cd "$DATASET_ROOT" && pwd)"
+fi
+MAPPING_CSV="${DATASET_ROOT}/mapping.csv"
+verify_eval_assets "$TEST_SET_DIR" "$MAPPING_CSV" || exit 1
+
 export CUDA_VISIBLE_DEVICES="$CUDA_ID"
 export OUTPUT_DIRS="$OUTPUT_DIR"
 export TEST_SET_DIR

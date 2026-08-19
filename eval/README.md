@@ -56,6 +56,16 @@ This sequentially runs:
 - `run_eval.sh` accepts both absolute and relative `--output-dir` paths.
 - `EVAL_METRICS_SUBDIR` controls where detailed metric CSV/TXT files are stored under each `OUTPUT_DIR` (default: `eval_metrics`).
 
+Standalone `eval/*.sh` scripts default `TEST_SET_DIR` to DEV. For EVAL1/EVAL2, export the split directory (and `OUTPUT_DIRS`) first:
+
+```bash
+export OUTPUT_DIRS=./output/EVAL2/BSRNN
+export TEST_SET_DIR=./datasets/REAL-T-eval2/EVAL2
+# mapping.csv is inferred as dirname(TEST_SET_DIR)/mapping.csv
+bash -i ./eval/transcribe_and_evaluation.sh 1 2
+bash -i ./eval/vad_and_evaluation.sh 1 2
+```
+
 Expected outputs under each `OUTPUT_DIR`:
 
 - Detailed metric files under `${EVAL_METRICS_SUBDIR}`:
@@ -215,14 +225,12 @@ PY
 `eval/transcribe_and_evaluation.sh` runs transcription and TER using `zipformer-zh` for Chinese datasets and `zipformer-en` for English datasets. Both backends are CPU-only sherpa-onnx Zipformer transducers; the `--device` flag is kept for API parity but does not enable a CUDA EP.
 
 ```bash
-# Only ASR
+# DEV (default TEST_SET_DIR)
 bash -i ./eval/transcribe_and_evaluation.sh 1
 
-# Only evaluation
-bash -i ./eval/transcribe_and_evaluation.sh 2
-
-# Both
-bash -i ./eval/transcribe_and_evaluation.sh 1 2
+# EVAL2
+OUTPUT_DIRS=./output/EVAL2/BSRNN TEST_SET_DIR=./datasets/REAL-T-eval2/EVAL2 \
+  bash -i ./eval/transcribe_and_evaluation.sh 1 2
 ```
 
 Important env vars:
@@ -244,17 +252,12 @@ Important env vars:
 - mode `3`: visualization
 
 ```bash
-# Only VAD
-bash -i ./eval/vad_and_evaluation.sh 1
-
-# Only timing evaluation
-bash -i ./eval/vad_and_evaluation.sh 2
-
-# Full timing pipeline
+# DEV (default TEST_SET_DIR)
 bash -i ./eval/vad_and_evaluation.sh 1 2
 
-# Optional visualization after mode 2
-bash -i ./eval/vad_and_evaluation.sh 3
+# EVAL1
+OUTPUT_DIRS=./output/EVAL1/BSRNN TEST_SET_DIR=./datasets/REAL-T-eval1/EVAL1 \
+  bash -i ./eval/vad_and_evaluation.sh 1 2
 ```
 
 Important env vars:
@@ -282,11 +285,12 @@ Mode `1` writes `FireRedVAD/vad_segments.jsonl` under each dataset directory. Mo
 - `SPK_SIM_PAIR_MODE=mixture_enrol`
 
 ```bash
-# TSE vs enrol
+# TSE vs enrol (DEV default)
 bash -i ./eval/compute_spk_similarity.sh 1 2
 
-# Mixture vs enrol baseline
-SPK_SIM_PAIR_MODE=mixture_enrol bash -i ./eval/compute_spk_similarity.sh 1 2
+# Mixture vs enrol baseline on EVAL2
+OUTPUT_DIRS=./output/EVAL2/BSRNN TEST_SET_DIR=./datasets/REAL-T-eval2/EVAL2 \
+  SPK_SIM_PAIR_MODE=mixture_enrol bash -i ./eval/compute_spk_similarity.sh 1 2
 ```
 
 Important env vars:
@@ -304,8 +308,12 @@ Important env vars:
 `eval/compute_dnsmos.sh` computes `SIG`, `BAK`, `OVRL`, and `P808`.
 
 ```bash
-# Compute CSV and regenerate TXT
+# DEV (default TEST_SET_DIR)
 bash -i ./eval/compute_dnsmos.sh 1 2
+
+# EVAL1
+OUTPUT_DIRS=./output/EVAL1/BSRNN TEST_SET_DIR=./datasets/REAL-T-eval1/EVAL1 \
+  bash -i ./eval/compute_dnsmos.sh 1 2
 ```
 
 Important env vars:

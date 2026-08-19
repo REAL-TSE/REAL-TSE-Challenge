@@ -39,3 +39,22 @@ verify_test_set_dir() {
         return 1
     fi
 }
+
+verify_eval_assets() {
+    local test_set_dir="$1"
+    local mapping_csv="$2"
+
+    if [ ! -f "$mapping_csv" ]; then
+        echo "mapping.csv not found: $mapping_csv"
+        echo "Generate it with: bash -i ./pre.sh"
+        return 1
+    fi
+    if ! compgen -G "${test_set_dir}"/*_meta.csv > /dev/null; then
+        echo "No *_meta.csv found under ${test_set_dir}."
+        return 1
+    fi
+    if [ ! -d "${test_set_dir}/json" ]; then
+        echo "Overlap JSON directory not found: ${test_set_dir}/json"
+        return 1
+    fi
+}
