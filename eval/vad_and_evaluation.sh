@@ -9,8 +9,6 @@ PREPARE_LABEL_SCRIPT="${REAL_T_ROOT}/utils/prepare_label_segments.py"
 EVAL_SCRIPT="${REAL_T_ROOT}/utils/tse_timing_evaluation.py"
 VIS_SCRIPT="${REAL_T_ROOT}/utils/plot_tse_timeline.py"
 
-GT_JSON_BASE_DIR="${GT_JSON_BASE_DIR:-${TEST_SET_DIR}/json}"
-METADATA_DIR="${METADATA_DIR:-${TEST_SET_DIR}/metadata}"
 FIREREDASR2S_ROOT="${FIREREDASR2S_ROOT:-./FireRedASR2S}"
 FIRERED_VAD_MODEL_DIR="${FIRERED_VAD_MODEL_DIR:-${FIREREDASR2S_ROOT}/pretrained_models/FireRedVAD/VAD}"
 VAD_DIR_NAME="${VAD_DIR_NAME:-FireRedVAD}"
@@ -21,6 +19,8 @@ COLLAR="${COLLAR:-0.05}"
 MATCH_TOLERANCE="${MATCH_TOLERANCE:-0.02}"
 
 init_eval_common
+GT_JSON_BASE_DIR="${GT_JSON_BASE_DIR:-${TEST_SET_DIR}/json}"
+METADATA_DIR="${METADATA_DIR:-${TEST_SET_DIR}/metadata}"
 
 MODES=("$@")
 if [ ${#MODES[@]} -eq 0 ]; then

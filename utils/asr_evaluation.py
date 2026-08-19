@@ -24,7 +24,11 @@ def construct_predicted_path_mapping(predicted_dir, chinese_asr_model, english_a
         else:
             raise ValueError(f"Unknown dataset: {dataset}")
 
-        predicted_csv_path = os.path.join(predicted_dir, dataset, model_name, "predicted.csv")
+        dataset_dir = os.path.join(predicted_dir, dataset)
+        if not os.path.isdir(dataset_dir):
+            continue
+
+        predicted_csv_path = os.path.join(dataset_dir, model_name, "predicted.csv")
         if not os.path.exists(predicted_csv_path):
             print(f"Warning: {predicted_csv_path} does not exist, skipping.")
             continue

@@ -12,9 +12,7 @@ SPK_SIM_PAIR_MODE="${SPK_SIM_PAIR_MODE:-tse_enrol}"
 
 init_eval_common
 WESPEAKER_DATASET_LANG_OVERRIDES="${WESPEAKER_DATASET_LANG_OVERRIDES:-$DEFAULT_CHS_DATASET_LANG_OVERRIDES}"
-if [ -z "${MAPPING_CSV:-}" ]; then
-    MAPPING_CSV="$(cd "$(dirname "$TEST_SET_DIR")" && pwd)/mapping.csv"
-fi
+require_mapping_csv
 
 if [ "$SPK_SIM_PAIR_MODE" != "tse_enrol" ] && [ "$SPK_SIM_PAIR_MODE" != "mixture_enrol" ]; then
     echo "Invalid SPK_SIM_PAIR_MODE=$SPK_SIM_PAIR_MODE (must be tse_enrol or mixture_enrol)."

@@ -53,6 +53,10 @@ init_eval_common() {
     fi
     DATASETS="${DATASETS:-AliMeeting AISHELL-4 AMI DipCo CHiME6}"
 
+    if [ -z "${MAPPING_CSV:-}" ]; then
+        MAPPING_CSV="$(dirname "$TEST_SET_DIR")/mapping.csv"
+    fi
+
     EVAL_METRICS_SUBDIR="${EVAL_METRICS_SUBDIR#/}"
     EVAL_METRICS_SUBDIR="${EVAL_METRICS_SUBDIR%/}"
     if [ "$EVAL_METRICS_SUBDIR" = "." ]; then
@@ -104,4 +108,16 @@ eval_metrics_dir() {
         return
     fi
     echo "${output_dir}/${EVAL_METRICS_SUBDIR}"
+}
+
+require_mapping_csv() {
+    if [ -z "${MAPPING_CSV:-}" ]; then
+        echo "MAPPING_CSV is empty."
+        exit 1
+    fi
+    if [ ! -f "$MAPPING_CSV" ]; then
+        echo "mapping.csv not found: $MAPPING_CSV"
+        echo "Generate it with: bash -i ./pre.sh"
+        exit 1
+    fi
 }
