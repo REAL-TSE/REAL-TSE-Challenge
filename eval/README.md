@@ -7,24 +7,22 @@ Run the full REAL-T evaluation pipeline from the repo root with one command:
 ```bash
 cd REAL-TSE-Challenge
 
-# Evaluate on DEV split (5 datasets with ground-truth references)
+# Evaluate on DEV, EVAL1, or EVAL2 (same pipeline; auto-detects datasets)
 bash ./run_eval.sh --output-dir ./output/DEV/BSRNN --test-set DEV --cuda 0
+bash ./run_eval.sh --output-dir ./output/EVAL1/BSRNN --test-set EVAL1 --cuda 0
+bash ./run_eval.sh --output-dir ./output/EVAL2/BSRNN --test-set EVAL2 --cuda 0
 ```
 
-Local evaluation is only available for the **DEV** split. The released
-**EVAL1** and **EVAL2** splits do not include ground-truth references, so
-they are for inference/submission only and cannot be evaluated locally
-with `run_eval.sh`.
+`run_eval.sh` supports `DEV`, `EVAL1`, and `EVAL2`. Each split uses the
+same local evaluation pipeline and expects the same ground-truth layout
+as DEV (meta CSVs, transcripts, and overlap JSON). Datasets are
+auto-detected from `*_meta.csv` in the test set directory.
 
 `run_eval.sh` now supports top-level modes:
 
 - `1`: run all evaluation sub-scripts only
 - `2`: regenerate the aggregated summary from existing CSV files only
 - `1 2`: run sub-scripts first, then generate the aggregated summary
-
-For local evaluation, use `--test-set DEV`. The pipeline auto-detects
-which DEV datasets are available from the `*_meta.csv` files in the test
-set directory.
 
 Examples:
 
@@ -51,8 +49,7 @@ This sequentially runs:
 
 - All commands below are intended to be run from the REAL-T repo root.
 - `OUTPUT_DIRS` is a space-separated list of TSE output roots such as `./output/DEV/BSRNN`.
-- `TEST_SET_DIR` should point to `./datasets/REAL-T-dev/DEV` for local evaluation.
-- `EVAL1` and `EVAL2` outputs can be generated with `run_tse.sh`, but they do not have local ground-truth references for `run_eval.sh`.
+- `TEST_SET_DIR` should point at the split folder: `./datasets/REAL-T-dev/DEV`, `./datasets/REAL-T-eval1/EVAL1`, or `./datasets/REAL-T-eval2/EVAL2`.
 - `DATASETS` is auto-detected from `*_meta.csv` in `TEST_SET_DIR` when not set explicitly.
 - All eval shell scripts source `env_setup.sh` automatically.
 - `run_eval.sh` sets one `CUDA_VISIBLE_DEVICES` value for the entire pipeline and forces ONNX-based stages onto CUDA with `WESPEAKER_PROVIDER=cuda` and `DNSMOS_PROVIDER=cuda`.
@@ -72,7 +69,7 @@ Expected outputs under each `OUTPUT_DIR`:
 
 `{OUTPUT_NAME}_summary.txt` is the new aggregated report. It is recomputed from CSV files and contains two mean-only tables:
 
-- `Mean by dataset`: typically 5 rows for `AISHELL-4 / AMI / AliMeeting / CHiME6 / DipCo`
+- `Mean by dataset`: `DEV` typically has 5 rows (`AISHELL-4 / AMI / AliMeeting / CHiME6 / DipCo`); `EVAL1` has 4 (`AliMeeting / AMI / CHiME6 / DipCo`); `EVAL2` has 2 (`unseen_CN / unseen_EN`)
 - `Mean by language`: typically 2 rows for `en / chs`
 
 Its columns are organized as grouped headers:
@@ -104,7 +101,7 @@ Current metric sources for the aggregated summary:
 
 Evaluation requires:
 
-- REAL-T DEV dataset with ground-truth references
+- A released REAL-T split (`DEV`, `EVAL1`, or `EVAL2`) with ground-truth references
 - ASR model weights: `zipformer-en` (sherpa-onnx-zipformer-gigaspeech-2023-12-12) and `zipformer-zh` (sherpa-onnx-zipformer-multi-zh-hans-2023-9-2)
 - Timing-VAD model weights: `FireRedVAD` (provided by FireRedASR2S; not used for ASR)
 - DNSMOS ONNX model weights
@@ -187,10 +184,12 @@ mkdir -p ./FireRedASR2S/pretrained_models/FireRedVAD
 python -c "from modelscope import snapshot_download; snapshot_download('xukaituo/FireRedVAD', local_dir='./FireRedASR2S/pretrained_models/FireRedVAD')"
 ```
 
-Timing evaluation also requires overlap JSON under
-`./datasets/REAL-T-dev/DEV/json`.
+Timing evaluation also requires overlap JSON under `${TEST_SET_DIR}/json`
+(for example `./datasets/REAL-T-dev/DEV/json`,
+`./datasets/REAL-T-eval1/EVAL1/json`, or
+`./datasets/REAL-T-eval2/EVAL2/json`).
 
-If you copied the released `REAL-T-dev` folder, that directory is already
+If you copied the released split folder, that directory is already
 included.
 
 
@@ -316,6 +315,7 @@ Important env vars:
 - `DNSMOS_MODEL_DIR`
 - `DNSMOS_PROVIDER`
 - `DNSMOS_NO_DOWNLOAD`
+- `DNSMOS_DATASET_LANG_OVERRIDES`
 - `MAX_SAMPLES`
 
 ## Aggregated Summary Internals

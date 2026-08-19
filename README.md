@@ -30,7 +30,7 @@ Key features of REAL-T include:
 - **Multi-genre**: Covering diverse conversational scenarios
 - **Multi-enrollment**: Multiple enrollment utterance from different parts of the conversation
 
-REAL-T ships **DEV**, **EVAL1**, and **EVAL2** splits. DEV includes ground-truth references for local evaluation; EVAL1 and EVAL2 are for inference/submission only.
+REAL-T ships **DEV**, **EVAL1**, and **EVAL2** splits. All three include ground-truth references for local evaluation with `run_eval.sh`.
 
 Evaluations reveal that existing TSE models suffer significant performance degradation on REAL-T, highlighting the need for more robust approaches tailored to real conversational speech.
 
@@ -208,20 +208,19 @@ REAL-T/
 
 The recommended evaluation entrypoint is now `run_eval.sh` at the repo root. It runs the full evaluation pipeline sequentially on one `OUTPUT_DIR`, using one CUDA device for all stages.
 
-Local evaluation is only available for the **DEV** split. The released
-**EVAL1** and **EVAL2** splits do not include ground-truth references,
-so they are for inference/submission only and cannot be evaluated locally
-with `run_eval.sh`.
+`run_eval.sh` supports `DEV`, `EVAL1`, and `EVAL2`. The pipeline auto-detects datasets from `*_meta.csv` in the split directory.
 
 ```bash
 cd REAL-TSE-Challenge
 bash ./run_eval.sh --output-dir ./output/DEV/tfmap_context_100 --test-set DEV --cuda 0
+bash ./run_eval.sh --output-dir ./output/EVAL1/tfmap_context_100 --test-set EVAL1 --cuda 0
+bash ./run_eval.sh --output-dir ./output/EVAL2/tfmap_context_100 --test-set EVAL2 --cuda 0
 ```
 
 | **Argument**        | **Description**                                                                |
 | :------------------ | :----------------------------------------------------------------------------- |
 | `--output-dir`      | (required) Path to the TSE output directory to evaluate.                       |
-| `--test-set`        | (required) Evaluation split for local evaluation. Use `DEV`; `EVAL1`/`EVAL2` do not include ground truth. |
+| `--test-set`        | (required) Evaluation split: `DEV`, `EVAL1`, or `EVAL2`.                        |
 | `--cuda`            | (required) CUDA device ID for GPU-accelerated evaluation.                      |
 | `--chinese-asr`     | (optional) ASR model for Chinese datasets. Default: `zipformer-zh`. Other: `FireRedASR-AED-L`. |
 | `--english-asr`     | (optional) ASR model for English datasets. Default: `zipformer-en`. Other: `whisper-large-v2`. |
@@ -244,9 +243,9 @@ If no mode is provided, the default is `1 2`.
 #### Switching the ASR backend (optional)
 
 By default the TER evaluation uses `zipformer-zh` for Chinese datasets
-(AISHELL-4, AliMeeting) and `zipformer-en` for English datasets (AMI,
-CHiME6, DipCo). The original Whisper-large-v2 / FireRedASR-AED-L pair is
-still available and can be selected via CLI flags:
+(AISHELL-4, AliMeeting, unseen_CN) and `zipformer-en` for English
+datasets (AMI, CHiME6, DipCo, unseen_EN). The original Whisper-large-v2 /
+FireRedASR-AED-L pair is still available and can be selected via CLI flags:
 
 ```bash
 # Reproduce the historical setup (FireRedASR-AED-L for zh, Whisper-large-v2 for en)
@@ -312,12 +311,12 @@ Detailed per-metric instructions, prerequisites, and optional visualization are 
 ### 3.3 TSE Inference vs Eval
 
 - Use `run_tse.sh` for TSE inference on `DEV`, `EVAL1`, or `EVAL2`.
-- Use `run_eval.sh` for the full local evaluation pipeline on `DEV`.
-- Use scripts under `./eval/` only when you want to run individual DEV evaluation sub-steps manually.
+- Use `run_eval.sh` for the full local evaluation pipeline on `DEV`, `EVAL1`, or `EVAL2`.
+- Use scripts under `./eval/` only when you want to run individual evaluation sub-steps manually.
 
 ## 4. Results
 
-We evaluate four BSRNN-based TSE models with different speaker information fusion strategies (speaker embedding vs. time-frequency featuremap interaction) and causality (causal vs. non-causal), all trained on Libri2Mix-100. The table below compares their performance on the DEV set. EVAL1 and EVAL2 tables are official reference results; the released EVAL1/EVAL2 splits do not include ground-truth references, so these scores cannot be regenerated locally with `run_eval.sh`.
+We evaluate four BSRNN-based TSE models with different speaker information fusion strategies (speaker embedding vs. time-frequency featuremap interaction) and causality (causal vs. non-causal), all trained on Libri2Mix-100. The table below compares their performance on the DEV set. EVAL1 and EVAL2 tables are official reference results and can be regenerated locally with `run_eval.sh` once the corresponding split data is in `./datasets/`.
 
 
 <div align="center">
@@ -333,7 +332,7 @@ We evaluate four BSRNN-based TSE models with different speaker information fusio
 
 ### 4.1 EVAL1
 
-EVAL1 split: AliMeeting, AMI, CHiME6, DipCo (2,000 samples).
+EVAL1 split: AliMeeting, AMI, CHiME6, DipCo (1,980 samples).
 
 <div align="center">
 

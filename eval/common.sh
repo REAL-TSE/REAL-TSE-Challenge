@@ -9,6 +9,8 @@ source "${REAL_T_ROOT}/env_setup.sh"
 # EVAL2 uses language-tagged virtual datasets unseen_CN / unseen_EN.
 KNOWN_CHINESE_DATASETS="AliMeeting AISHELL-4 unseen_CN"
 KNOWN_ENGLISH_DATASETS="AMI DipCo CHiME6 unseen_EN"
+# Shared chs bucket for WeSpeaker / DNSMOS per-language stats on all splits.
+DEFAULT_CHS_DATASET_LANG_OVERRIDES="AISHELL-4:chs,AliMeeting:chs,unseen_CN:chs"
 
 auto_detect_datasets() {
     local dir="$1"
@@ -37,6 +39,7 @@ filter_datasets() {
 init_eval_common() {
     local default_output_dirs="${1:-}"
 
+    # Standalone default is DEV; run_eval.sh exports TEST_SET_DIR for every split.
     TEST_SET_DIR="${TEST_SET_DIR:-./datasets/REAL-T-dev/DEV}"
     MAPPING_CSV_NAME="${MAPPING_CSV_NAME:-tse_audio_mapping.csv}"
     EVAL_METRICS_SUBDIR="${EVAL_METRICS_SUBDIR:-eval_metrics}"
