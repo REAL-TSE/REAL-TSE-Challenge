@@ -14,8 +14,7 @@ ASR_MAX_SAMPLES="${ASR_MAX_SAMPLES:-}"
 
 init_eval_common
 
-CHINESE_DATASETS="${CHINESE_DATASETS:-$(filter_datasets "$KNOWN_CHINESE_DATASETS" "$DATASETS")}"
-ENGLISH_DATASETS="${ENGLISH_DATASETS:-$(filter_datasets "$KNOWN_ENGLISH_DATASETS" "$DATASETS")}"
+DATASET_LANG_SCRIPT="${REAL_T_ROOT}/utils/dataset_lang.py"
 
 MODES=("$@")
 if [ ${#MODES[@]} -eq 0 ]; then
@@ -39,15 +38,8 @@ run_asr() {
                 continue
             fi
 
-            ASR_MODEL_NAME=""
-            if [[ " ${CHINESE_DATASETS} " == *" ${dataset} "* ]]; then
-                ASR_MODEL_NAME="$CHINESE_ASR_MODEL"
-            elif [[ " ${ENGLISH_DATASETS} " == *" ${dataset} "* ]]; then
-                ASR_MODEL_NAME="$ENGLISH_ASR_MODEL"
-            fi
-
-            if [ -z "$ASR_MODEL_NAME" ]; then
-                echo "Dataset $dataset is not in CHINESE_DATASETS or ENGLISH_DATASETS. Skipping."
+            if ! ASR_MODEL_NAME="$(python3 "$DATASET_LANG_SCRIPT" asr-model "$dataset" "$CHINESE_ASR_MODEL" "$ENGLISH_ASR_MODEL")"; then
+                echo "Dataset $dataset has no language mapping. Skipping."
                 continue
             fi
 

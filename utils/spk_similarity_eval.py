@@ -9,6 +9,12 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
+from dataset_lang import (
+    language_for_dataset,
+    parse_dataset_lang_overrides,
+    to_wespeaker_lang,
+)
+
 
 OUTPUT_COLUMNS = [
     "output_dir",
@@ -56,7 +62,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--wespeaker_lang",
         default="en",
-        help="Language argument for wespeakerruntime.Speaker(lang=...).",
+        help=(
+            "Unused for dataset routing (language comes from dataset_lang.py). "
+            "Kept for CLI compatibility."
+        ),
     )
     parser.add_argument(
         "--provider",
@@ -66,11 +75,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--dataset_lang_overrides",
-        default="AISHELL-4:chs,AliMeeting:chs,unseen_CN:chs",
+        default="",
         help=(
-            "Comma-separated dataset->lang mapping, e.g. "
-            "'AISHELL-4:chs,AliMeeting:chs,unseen_CN:chs'. "
-            "Unlisted datasets use --wespeaker_lang."
+            "Optional comma-separated dataset->lang overrides, e.g. "
+            "'AISHELL-4:zh,unseen_CN:zh'. Values are en/zh (chs is accepted "
+            "as an alias of zh). Unlisted datasets use the shared map in "
+            "dataset_lang.py."
         ),
     )
     parser.add_argument(
@@ -409,15 +419,25 @@ def summarize(df: pd.DataFrame) -> Tuple[dict, pd.DataFrame]:
 def summarize_per_language(
     df: pd.DataFrame,
     dataset_lang_overrides: Dict[str, str],
-    default_lang: str,
 ) -> pd.DataFrame:
-    """Group by language (en/chs) and compute stats. Order: en first, then chs."""
+    """Group by canonical language (en/zh) and compute stats. Order: en, then zh."""
     df = df.copy()
-    df["_lang"] = df["dataset"].map(
-        lambda d: dataset_lang_overrides.get(d, default_lang)
-    )
+
+    def _lang_or_none(name: object) -> Optional[str]:
+        try:
+            return language_for_dataset(str(name), dataset_lang_overrides)
+        except KeyError:
+            return None
+
+    df["_lang"] = df["dataset"].map(_lang_or_none)
+    unknown = sorted(str(d) for d in df.loc[df["_lang"].isna(), "dataset"].unique())
+    if unknown:
+        print(
+            "[WARN] No language mapping; excluded from per-language summary: "
+            + ", ".join(unknown)
+        )
     per_lang = []
-    for lang in ["en", "chs"]:
+    for lang in ["en", "zh"]:
         group = df[df["_lang"] == lang]
         if len(group) == 0:
             continue
@@ -572,9 +592,14 @@ def run_one_output_dir(
 
     for dataset_dir in dataset_dirs:
         dataset = dataset_dir.name
-        dataset_lang = dataset_lang_overrides.get(dataset, args.wespeaker_lang)
-        speaker_model = get_or_create_speaker_model(args, dataset_lang, speaker_model_cache)
-        print(f"[WeSpeaker] dataset={dataset} lang={dataset_lang}")
+        try:
+            dataset_lang = language_for_dataset(dataset, dataset_lang_overrides)
+        except KeyError:
+            print(f"[Skip] Dataset {dataset} has no language mapping. Skipping.")
+            continue
+        wespeaker_lang = to_wespeaker_lang(dataset_lang)
+        speaker_model = get_or_create_speaker_model(args, wespeaker_lang, speaker_model_cache)
+        print(f"[WeSpeaker] dataset={dataset} lang={dataset_lang} wespeaker={wespeaker_lang}")
         rows, processed = build_dataset_rows(
             output_dir=output_dir,
             dataset=dataset,
@@ -582,7 +607,7 @@ def run_one_output_dir(
             reference_map=reference_map,
             speaker_model=speaker_model,
             embedding_cache=embedding_cache,
-            cache_namespace=dataset_lang,
+            cache_namespace=wespeaker_lang,
             repo_root=repo_root,
             pair_mode=pair_mode,
             max_samples=max_samples,
@@ -607,9 +632,7 @@ def run_one_output_dir(
     status_counts = {str(k): int(v) for k, v in result_df["status"].value_counts(dropna=False).to_dict().items()}
 
     if not args.csv_only:
-        per_lang_df = summarize_per_language(
-            result_df, dataset_lang_overrides, args.wespeaker_lang
-        )
+        per_lang_df = summarize_per_language(result_df, dataset_lang_overrides)
         write_summary_txt(
             output_txt, overall, per_dataset_df, status_counts,
             pair_mode=pair_mode, per_lang_df=per_lang_df,
@@ -677,7 +700,6 @@ def init_speaker_model(args, model_lang: str):
 def run_regen_txt_only(
     output_dir: Path,
     dataset_lang_overrides: Dict[str, str],
-    default_lang: str,
     output_csv_name: Optional[str],
     output_txt_name: Optional[str],
     pair_mode: str,
@@ -700,12 +722,11 @@ def run_regen_txt_only(
 
     result_df = pd.read_csv(output_csv)
     overall, per_dataset_df = summarize(result_df)
-    per_lang_df = summarize_per_language(result_df, dataset_lang_overrides, default_lang)
+    per_lang_df = summarize_per_language(result_df, dataset_lang_overrides)
     status_counts = {
         str(k): int(v)
         for k, v in result_df["status"].value_counts(dropna=False).to_dict().items()
     }
-    pair_mode_label, candidate_label = get_pair_mode_labels(pair_mode)
     write_summary_txt(
         output_txt, overall, per_dataset_df, status_counts,
         pair_mode=pair_mode, per_lang_df=per_lang_df,
@@ -720,35 +741,6 @@ def get_or_create_speaker_model(args, model_lang: str, speaker_model_cache: Dict
     return speaker_model_cache[model_lang]
 
 
-def parse_dataset_lang_overrides(raw: str) -> Dict[str, str]:
-    overrides: Dict[str, str] = {}
-    if raw is None:
-        return overrides
-    raw = raw.strip()
-    if not raw:
-        return overrides
-
-    for item in raw.split(","):
-        part = item.strip()
-        if not part:
-            continue
-        if ":" not in part:
-            raise SystemExit(
-                f"Invalid dataset_lang_overrides item '{part}'. Expected format: dataset:lang"
-            )
-        dataset, lang = part.split(":", 1)
-        dataset = dataset.strip()
-        lang = lang.strip()
-        if lang not in {"en", "chs"}:
-            raise SystemExit(
-                f"Invalid language '{lang}' in dataset_lang_overrides. Supported: en, chs"
-            )
-        if not dataset:
-            raise SystemExit("dataset_lang_overrides contains empty dataset name.")
-        overrides[dataset] = lang
-    return overrides
-
-
 def main() -> None:
     args = parse_args()
 
@@ -758,7 +750,10 @@ def main() -> None:
             "Proceeding with num_workers=1."
         )
 
-    dataset_lang_overrides = parse_dataset_lang_overrides(args.dataset_lang_overrides)
+    try:
+        dataset_lang_overrides = parse_dataset_lang_overrides(args.dataset_lang_overrides)
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
     if dataset_lang_overrides:
         print(f"[WeSpeaker] dataset_lang_overrides={dataset_lang_overrides}")
 
@@ -767,7 +762,6 @@ def main() -> None:
             run_regen_txt_only(
                 output_dir=Path(output_dir_raw).resolve(),
                 dataset_lang_overrides=dataset_lang_overrides,
-                default_lang=args.wespeaker_lang,
                 output_csv_name=args.output_csv_name,
                 output_txt_name=args.output_txt_name,
                 pair_mode=args.pair_mode,

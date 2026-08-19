@@ -1,26 +1,42 @@
-"""Dataset -> language map shared by inference and aggregation scripts.
+"""Re-export of the canonical dataset -> language map.
 
-Kept in one place so backends, the inference driver and the multi-model
-aggregator never disagree on which language a dataset belongs to.
+The source of truth lives in ``utils/dataset_lang.py`` so eval scripts can
+import it without pulling in the ASR package. This module keeps
+``from asr.dataset_lang import DATASET_LANGUAGE, get_language`` working.
 """
 
 from __future__ import annotations
 
-from typing import Dict
+import importlib.util
+from pathlib import Path
 
+_UTILS_PATH = Path(__file__).resolve().parents[1] / "utils" / "dataset_lang.py"
+_SPEC = importlib.util.spec_from_file_location("_real_t_dataset_lang", _UTILS_PATH)
+if _SPEC is None or _SPEC.loader is None:
+    raise ImportError(f"Could not load dataset language map from {_UTILS_PATH}")
+_MOD = importlib.util.module_from_spec(_SPEC)
+_SPEC.loader.exec_module(_MOD)
 
-DATASET_LANGUAGE: Dict[str, str] = {
-    "CHiME6": "en",
-    "AISHELL-4": "zh",
-    "AliMeeting": "zh",
-    "AMI": "en",
-    "DipCo": "en",
-    # EVAL2 unseen splits (language-tagged virtual datasets)
-    "unseen_CN": "zh",
-    "unseen_EN": "en",
-}
+CANONICAL_LANGS = _MOD.CANONICAL_LANGS
+DATASET_LANGUAGE = _MOD.DATASET_LANGUAGE
+asr_model_for = _MOD.asr_model_for
+chinese_datasets = _MOD.chinese_datasets
+english_datasets = _MOD.english_datasets
+get_language = _MOD.get_language
+language_for_dataset = _MOD.language_for_dataset
+normalize_language = _MOD.normalize_language
+parse_dataset_lang_overrides = _MOD.parse_dataset_lang_overrides
+to_wespeaker_lang = _MOD.to_wespeaker_lang
 
-
-def get_language(dataset_name: str) -> str:
-    """Return ``"zh"`` or ``"en"`` for a known dataset."""
-    return DATASET_LANGUAGE[dataset_name]
+__all__ = [
+    "CANONICAL_LANGS",
+    "DATASET_LANGUAGE",
+    "asr_model_for",
+    "chinese_datasets",
+    "english_datasets",
+    "get_language",
+    "language_for_dataset",
+    "normalize_language",
+    "parse_dataset_lang_overrides",
+    "to_wespeaker_lang",
+]

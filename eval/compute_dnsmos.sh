@@ -10,7 +10,6 @@ DNSMOS_NO_DOWNLOAD="${DNSMOS_NO_DOWNLOAD:-0}"
 MAX_SAMPLES="${MAX_SAMPLES:-}"
 
 init_eval_common
-DNSMOS_DATASET_LANG_OVERRIDES="${DNSMOS_DATASET_LANG_OVERRIDES:-$DEFAULT_CHS_DATASET_LANG_OVERRIDES}"
 
 MODES=("$@")
 if [ ${#MODES[@]} -eq 0 ]; then
@@ -47,11 +46,13 @@ run_dnsmos_full() {
             --test_set_dir "$TEST_SET_DIR"
             --dnsmos_model_dir "$DNSMOS_MODEL_DIR"
             --provider "$DNSMOS_PROVIDER"
-            --dataset_lang_overrides "$DNSMOS_DATASET_LANG_OVERRIDES"
             --output_csv_name "$OUTPUT_CSV_NAME"
             --output_txt_name "$OUTPUT_TXT_NAME"
             --csv_only
         )
+        if [ -n "${DNSMOS_DATASET_LANG_OVERRIDES:-}" ]; then
+            CMD+=(--dataset_lang_overrides "$DNSMOS_DATASET_LANG_OVERRIDES")
+        fi
         if [ "$DNSMOS_NO_DOWNLOAD" = "1" ]; then
             CMD+=(--no_download_models)
         fi
@@ -76,13 +77,18 @@ run_dnsmos_regen_txt() {
         OUTPUT_CSV_NAME="${OUTPUT_NAMES%%|*}"
         OUTPUT_TXT_NAME="${OUTPUT_NAMES##*|}"
 
-        python3 "${REAL_T_ROOT}/utils/dnsmos_eval.py" \
-            --output_dir "$OUTPUT_DIR" \
-            --dnsmos_model_dir "$DNSMOS_MODEL_DIR" \
-            --dataset_lang_overrides "$DNSMOS_DATASET_LANG_OVERRIDES" \
-            --output_csv_name "$OUTPUT_CSV_NAME" \
-            --output_txt_name "$OUTPUT_TXT_NAME" \
+        REGEN_CMD=(
+            python3 "${REAL_T_ROOT}/utils/dnsmos_eval.py"
+            --output_dir "$OUTPUT_DIR"
+            --dnsmos_model_dir "$DNSMOS_MODEL_DIR"
+            --output_csv_name "$OUTPUT_CSV_NAME"
+            --output_txt_name "$OUTPUT_TXT_NAME"
             --regen_txt_only
+        )
+        if [ -n "${DNSMOS_DATASET_LANG_OVERRIDES:-}" ]; then
+            REGEN_CMD+=(--dataset_lang_overrides "$DNSMOS_DATASET_LANG_OVERRIDES")
+        fi
+        "${REGEN_CMD[@]}"
     done
 }
 

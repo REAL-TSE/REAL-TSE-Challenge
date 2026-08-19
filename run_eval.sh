@@ -36,6 +36,10 @@ pair (zipformer-zh / zipformer-en). Whisper / FireRedASR remain available
 behind these flags for reproducing the historical numbers, but they can
 hallucinate (repeated n-grams / loops) on long real-world conversation
 audio, which is why Zipformer is the default for the final metric.
+
+Note: before the metric stages, a pre-scan lists dataset dirs under
+--output-dir that lack a language mapping (they are skipped by SPK_SIM /
+DNSMOS / TSE_TIMING). Set DATASET_LANG_STRICT=1 to abort on them instead.
 EOF
 }
 
@@ -161,6 +165,18 @@ run_pipeline() {
     echo "  metrics  : ${EVAL_METRICS_SUBDIR:-.}"
     echo "  ASR (zh) : ${CHINESE_ASR_MODEL:-zipformer-zh (default)}"
     echo "  ASR (en) : ${ENGLISH_ASR_MODEL:-zipformer-en (default)}"
+
+    PRE_SCAN_CMD=(python3 "${REAL_T_ROOT}/utils/dataset_lang.py" scan "$OUTPUT_DIR")
+    if [ -n "${WESPEAKER_DATASET_LANG_OVERRIDES:-}" ]; then
+        PRE_SCAN_CMD+=(--overrides "$WESPEAKER_DATASET_LANG_OVERRIDES")
+    fi
+    if [ -n "${DNSMOS_DATASET_LANG_OVERRIDES:-}" ]; then
+        PRE_SCAN_CMD+=(--overrides "$DNSMOS_DATASET_LANG_OVERRIDES")
+    fi
+    if [ "${DATASET_LANG_STRICT:-0}" = "1" ]; then
+        PRE_SCAN_CMD+=(--strict)
+    fi
+    run_stage "DATASET_LANG_PRESCAN" "${PRE_SCAN_CMD[@]}"
 
     run_stage "TER" bash "${REAL_T_ROOT}/eval/transcribe_and_evaluation.sh" 1 2
     run_stage "TSE_TIMING" bash "${REAL_T_ROOT}/eval/vad_and_evaluation.sh" 1 2

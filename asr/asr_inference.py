@@ -24,6 +24,7 @@ if _PROJECT_ROOT not in sys.path:
 from asr import (  # noqa: E402  (must follow sys.path setup)
     DATASET_LANGUAGE,
     get_asr_model,
+    get_language,
     init_cache_env,
     list_models,
     truncate_repetition,
@@ -145,12 +146,7 @@ def main() -> None:
     os.makedirs(args.output_dir, exist_ok=True)
     predicted_csv = os.path.join(args.output_dir, "predicted.csv")
 
-    lang = DATASET_LANGUAGE.get(args.dataset_name)
-    if lang is None:
-        raise KeyError(
-            f"Unknown dataset_name {args.dataset_name!r}; expected one of "
-            f"{sorted(DATASET_LANGUAGE.keys())}"
-        )
+    lang = get_language(args.dataset_name)
 
     print(f"[asr] loading model: {args.model_name}")
     model = get_asr_model(args.model_name, device=args.device)

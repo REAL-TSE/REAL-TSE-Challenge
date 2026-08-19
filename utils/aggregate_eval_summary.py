@@ -8,6 +8,8 @@ from typing import Dict, Iterable, List, Sequence
 import numpy as np
 import pandas as pd
 
+from dataset_lang import normalize_language
+
 
 DEFAULT_DATASET_ORDER = [
     "AISHELL-4",
@@ -18,7 +20,7 @@ DEFAULT_DATASET_ORDER = [
     "unseen_CN",
     "unseen_EN",
 ]
-DEFAULT_LANG_ORDER = ["en", "chs"]
+DEFAULT_LANG_ORDER = ["en", "zh"]
 
 
 def parse_args() -> argparse.Namespace:
@@ -112,17 +114,6 @@ def build_two_level_table(
         lines.append("| " + " | ".join(row[i].ljust(widths[i]) for i in range(len(row))) + " |")
     lines.append(sep)
     return lines
-
-
-def normalize_language(value: object) -> str:
-    if value is None or pd.isna(value):
-        return ""
-    text = str(value).strip().lower()
-    if text in {"zh", "zho", "chs", "cn", "chinese", "mandarin"}:
-        return "chs"
-    if text in {"en", "eng", "english"}:
-        return "en"
-    return text
 
 
 def ordered_names(names: Iterable[str], preferred: Sequence[str]) -> List[str]:

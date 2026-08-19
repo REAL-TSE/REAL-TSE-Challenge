@@ -5,13 +5,6 @@ REAL_T_ROOT="$(cd "${EVAL_DIR}/.." && pwd)"
 
 source "${REAL_T_ROOT}/env_setup.sh"
 
-# --- Dataset language mapping (used by auto-filtering helpers) ---
-# EVAL2 uses language-tagged virtual datasets unseen_CN / unseen_EN.
-KNOWN_CHINESE_DATASETS="AliMeeting AISHELL-4 unseen_CN"
-KNOWN_ENGLISH_DATASETS="AMI DipCo CHiME6 unseen_EN"
-# Shared chs bucket for WeSpeaker / DNSMOS per-language stats on all splits.
-DEFAULT_CHS_DATASET_LANG_OVERRIDES="AISHELL-4:chs,AliMeeting:chs,unseen_CN:chs"
-
 auto_detect_datasets() {
     local dir="$1"
     local result=""
