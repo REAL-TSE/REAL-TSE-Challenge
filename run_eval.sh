@@ -10,7 +10,7 @@ source "${REAL_T_ROOT}/utils/dataset_paths.sh"
 usage() {
     cat <<'EOF'
 Usage:
-  bash ./run_eval.sh --output-dir <path> --test-set DEV --cuda <id> \
+  bash ./run_eval.sh --output-dir <path> --test-set <DEV|EVAL1|EVAL2> --cuda <id> \
                      [--dataset-root <path>] [--chinese-asr <name>] [--english-asr <name>] [1] [2]
 
 Modes:
@@ -19,14 +19,15 @@ Modes:
 
 If no mode is provided, the default is: 1 2
 
-Local evaluation is only available for DEV. EVAL1 and EVAL2 do not ship
-ground-truth references and are intended for inference/submission only.
+Local evaluation is available for DEV, EVAL1, and EVAL2. Each split uses
+the same pipeline and expects the same ground-truth layout as DEV
+(meta CSVs, transcripts, and overlap JSON).
 
 ASR backend selection (optional):
-  --chinese-asr     ASR model for Chinese datasets (AISHELL-4, AliMeeting).
+  --chinese-asr     ASR model for Chinese datasets (AISHELL-4, AliMeeting, unseen_CN).
                     Default: zipformer-zh.
                     Other supported: FireRedASR-AED-L
-  --english-asr     ASR model for English datasets (AMI, CHiME6, DipCo).
+  --english-asr     ASR model for English datasets (AMI, CHiME6, DipCo, unseen_EN).
                     Default: zipformer-en.
                     Other supported: whisper-large-v2
 
@@ -105,12 +106,6 @@ if [[ "$OUTPUT_DIR" != /* ]]; then
 fi
 
 validate_test_set "$TEST_SET" || exit 1
-
-if [ "$TEST_SET" != "DEV" ]; then
-    echo "Local evaluation is only available for DEV."
-    echo "${TEST_SET} does not include ground-truth references; use run_tse.sh for inference/submission."
-    exit 1
-fi
 
 if [ ! -d "$OUTPUT_DIR" ]; then
     echo "Output directory not found: $OUTPUT_DIR"

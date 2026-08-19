@@ -9,7 +9,15 @@ import numpy as np
 import pandas as pd
 
 
-DEFAULT_DATASET_ORDER = ["AISHELL-4", "AMI", "AliMeeting", "CHiME6", "DipCo"]
+DEFAULT_DATASET_ORDER = [
+    "AISHELL-4",
+    "AMI",
+    "AliMeeting",
+    "CHiME6",
+    "DipCo",
+    "unseen_CN",
+    "unseen_EN",
+]
 DEFAULT_LANG_ORDER = ["en", "chs"]
 
 

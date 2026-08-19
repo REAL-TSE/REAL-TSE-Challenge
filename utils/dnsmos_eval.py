@@ -59,8 +59,11 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--dataset_lang_overrides",
-        default="AISHELL-4:chs,AliMeeting:chs",
-        help="Comma-separated dataset->lang for per-language stats (e.g. AISHELL-4:chs,AliMeeting:chs).",
+        default="AISHELL-4:chs,AliMeeting:chs,unseen_CN:chs",
+        help=(
+            "Comma-separated dataset->lang for per-language stats "
+            "(e.g. AISHELL-4:chs,AliMeeting:chs,unseen_CN:chs)."
+        ),
     )
     parser.add_argument(
         "--max_samples",
