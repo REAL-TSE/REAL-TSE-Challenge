@@ -80,7 +80,7 @@ Expected outputs under each `OUTPUT_DIR`:
 `{OUTPUT_NAME}_summary.txt` is the new aggregated report. It is recomputed from CSV files and contains two mean-only tables:
 
 - `Mean by dataset`: `DEV` typically has 5 rows (`AISHELL-4 / AMI / AliMeeting / CHiME6 / DipCo`); `EVAL1` has 4 (`AliMeeting / AMI / CHiME6 / DipCo`); `EVAL2` has 2 (`unseen_CN / unseen_EN`)
-- `Mean by language`: typically 2 rows for `en / chs`
+- `Mean by language`: typically 2 rows for `en / zh`
 
 Its columns are organized as grouped headers:
 
@@ -222,7 +222,7 @@ PY
 
 ### ASR TER
 
-`eval/transcribe_and_evaluation.sh` runs transcription and TER using `zipformer-zh` for Chinese datasets and `zipformer-en` for English datasets. Both backends are CPU-only sherpa-onnx Zipformer transducers; the `--device` flag is kept for API parity but does not enable a CUDA EP.
+`eval/transcribe_and_evaluation.sh` runs transcription and TER using `zipformer-zh` for Chinese datasets and `zipformer-en` for English datasets. Dataset language (`en` / `zh`) and therefore which ASR backend to run come from `utils/dataset_lang.py`. Both backends are CPU-only sherpa-onnx Zipformer transducers; the `--device` flag is kept for API parity but does not enable a CUDA EP.
 
 ```bash
 # DEV (default TEST_SET_DIR)
@@ -238,8 +238,6 @@ Important env vars:
 - `OUTPUT_DIRS`
 - `TEST_SET_DIR`
 - `DATASETS`
-- `CHINESE_DATASETS`
-- `ENGLISH_DATASETS`
 - `ASR_DEVICE`
 - `MAPPING_CSV_NAME`
 
@@ -298,9 +296,8 @@ Important env vars:
 - `OUTPUT_DIRS`
 - `TEST_SET_DIR`
 - `MAPPING_CSV`
-- `WESPEAKER_LANG`
 - `WESPEAKER_PROVIDER`
-- `WESPEAKER_DATASET_LANG_OVERRIDES`
+- `WESPEAKER_DATASET_LANG_OVERRIDES` (optional; default is the shared `en`/`zh` map in `utils/dataset_lang.py`)
 - `MAX_SAMPLES`
 
 ### DNSMOS
@@ -323,7 +320,7 @@ Important env vars:
 - `DNSMOS_MODEL_DIR`
 - `DNSMOS_PROVIDER`
 - `DNSMOS_NO_DOWNLOAD`
-- `DNSMOS_DATASET_LANG_OVERRIDES`
+- `DNSMOS_DATASET_LANG_OVERRIDES` (optional; default is the shared `en`/`zh` map in `utils/dataset_lang.py`)
 - `MAX_SAMPLES`
 
 ## Aggregated Summary Internals

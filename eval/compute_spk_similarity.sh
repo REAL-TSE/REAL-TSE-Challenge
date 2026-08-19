@@ -11,7 +11,6 @@ NUM_WORKERS="${NUM_WORKERS:-1}"
 SPK_SIM_PAIR_MODE="${SPK_SIM_PAIR_MODE:-tse_enrol}"
 
 init_eval_common
-WESPEAKER_DATASET_LANG_OVERRIDES="${WESPEAKER_DATASET_LANG_OVERRIDES:-$DEFAULT_CHS_DATASET_LANG_OVERRIDES}"
 require_mapping_csv
 
 if [ "$SPK_SIM_PAIR_MODE" != "tse_enrol" ] && [ "$SPK_SIM_PAIR_MODE" != "mixture_enrol" ]; then
@@ -73,13 +72,15 @@ PY
             --mapping_csv "$MAPPING_CSV"
             --wespeaker_lang "$WESPEAKER_LANG"
             --provider "$WESPEAKER_PROVIDER"
-            --dataset_lang_overrides "$WESPEAKER_DATASET_LANG_OVERRIDES"
             --num_workers "$NUM_WORKERS"
             --pair_mode "$SPK_SIM_PAIR_MODE"
             --output_csv_name "$OUTPUT_CSV_NAME"
             --output_txt_name "$OUTPUT_TXT_NAME"
             --csv_only
         )
+        if [ -n "${WESPEAKER_DATASET_LANG_OVERRIDES:-}" ]; then
+            CMD+=(--dataset_lang_overrides "$WESPEAKER_DATASET_LANG_OVERRIDES")
+        fi
         if [ -n "$MAX_SAMPLES" ]; then
             CMD+=(--max_samples "$MAX_SAMPLES")
         fi
@@ -101,15 +102,20 @@ run_spk_sim_regen_txt() {
         OUTPUT_CSV_NAME="${OUTPUT_NAMES%%|*}"
         OUTPUT_TXT_NAME="${OUTPUT_NAMES##*|}"
 
-        python3 "${REAL_T_ROOT}/utils/spk_similarity_eval.py" \
-            --output_dir "$OUTPUT_DIR" \
-            --wespeaker_lang "$WESPEAKER_LANG" \
-            --dataset_lang_overrides "$WESPEAKER_DATASET_LANG_OVERRIDES" \
-            --num_workers "$NUM_WORKERS" \
-            --pair_mode "$SPK_SIM_PAIR_MODE" \
-            --output_csv_name "$OUTPUT_CSV_NAME" \
-            --output_txt_name "$OUTPUT_TXT_NAME" \
+        REGEN_CMD=(
+            python3 "${REAL_T_ROOT}/utils/spk_similarity_eval.py"
+            --output_dir "$OUTPUT_DIR"
+            --wespeaker_lang "$WESPEAKER_LANG"
+            --num_workers "$NUM_WORKERS"
+            --pair_mode "$SPK_SIM_PAIR_MODE"
+            --output_csv_name "$OUTPUT_CSV_NAME"
+            --output_txt_name "$OUTPUT_TXT_NAME"
             --regen_txt_only
+        )
+        if [ -n "${WESPEAKER_DATASET_LANG_OVERRIDES:-}" ]; then
+            REGEN_CMD+=(--dataset_lang_overrides "$WESPEAKER_DATASET_LANG_OVERRIDES")
+        fi
+        "${REGEN_CMD[@]}"
     done
 }
 

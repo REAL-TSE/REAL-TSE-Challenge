@@ -2,6 +2,7 @@ import argparse
 import os
 import pandas as pd
 from calculate_TER import evaluate_TER
+from dataset_lang import DATASET_LANGUAGE, asr_model_for
 from print_stats import print_avg_wer_or_cer, compute_statistics
 
 pd.set_option('display.max_rows', None)
@@ -10,19 +11,9 @@ pd.set_option('display.width', None)
 pd.set_option('display.max_colwidth', None)
 
 def construct_predicted_path_mapping(predicted_dir, chinese_asr_model, english_asr_model):
-    # EVAL2 adds language-tagged virtual datasets unseen_CN / unseen_EN.
-    chinese_datasets = ["AISHELL-4", "AliMeeting", "unseen_CN"]
-    english_datasets = ["AMI", "CHiME6", "DipCo", "unseen_EN"]
-    datasets = chinese_datasets + english_datasets
-
     mapping = {}
-    for dataset in datasets:
-        if dataset in chinese_datasets:
-            model_name = chinese_asr_model
-        elif dataset in english_datasets:
-            model_name = english_asr_model
-        else:
-            raise ValueError(f"Unknown dataset: {dataset}")
+    for dataset in DATASET_LANGUAGE:
+        model_name = asr_model_for(dataset, chinese_asr_model, english_asr_model)
 
         dataset_dir = os.path.join(predicted_dir, dataset)
         if not os.path.isdir(dataset_dir):

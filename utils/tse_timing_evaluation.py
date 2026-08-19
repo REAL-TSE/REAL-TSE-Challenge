@@ -11,19 +11,10 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 
+from dataset_lang import get_language
+
 
 EPS = 1e-8
-
-# Dataset -> language for CN/EN statistics (same as transcribe_and_evaluation.sh)
-DATASET_LANGUAGE = {
-    "AISHELL-4": "zh",
-    "AliMeeting": "zh",
-    "AMI": "en",
-    "CHiME6": "en",
-    "DipCo": "en",
-    "unseen_CN": "zh",
-    "unseen_EN": "en",
-}
 
 
 @dataclass
@@ -231,6 +222,12 @@ def evaluate_dataset(
     counters = EvalCounters()
     detail_rows = []
 
+    try:
+        lang = get_language(dataset_name)
+    except KeyError:
+        print(f"[WARN] no language mapping, skip dataset {dataset_name}")
+        return pd.DataFrame(), counters
+
     mapping_path = dataset_dir / "tse_audio_mapping.csv"
     vad_jsonl_path = dataset_dir / vad_dir_name / vad_jsonl_name
     label_jsonl_path = dataset_dir / vad_dir_name / "label_segments.jsonl"
@@ -264,7 +261,6 @@ def evaluate_dataset(
             pred_segments_raw = vad_map[utterance].get("pred_segments", [])
             pred_segments = clip_intervals(parse_segments(pred_segments_raw), 0.0, mix_duration)
             metrics = compute_frame_metrics(pred_segments, label_segments, mix_duration, frame_shift)
-            lang = DATASET_LANGUAGE.get(dataset_name, "en")
             detail_rows.append(
                 {
                     "dataset": dataset_name,
@@ -357,7 +353,6 @@ def evaluate_dataset(
 
         metrics = compute_frame_metrics(pred_segments, gt_rel_segments_collar, mix_duration, frame_shift)
 
-        lang = DATASET_LANGUAGE.get(dataset_name, "en")
         detail_rows.append(
             {
                 "dataset": dataset_name,

@@ -13,6 +13,8 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
+from dataset_lang import language_for_dataset, parse_dataset_lang_overrides
+
 # DNSMOS constants (aligned with Microsoft DNS-Challenge dnsmos_local.py)
 SAMPLING_RATE = 16000
 INPUT_LENGTH = 9.01
@@ -59,10 +61,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--dataset_lang_overrides",
-        default="AISHELL-4:chs,AliMeeting:chs,unseen_CN:chs",
+        default="",
         help=(
-            "Comma-separated dataset->lang for per-language stats "
-            "(e.g. AISHELL-4:chs,AliMeeting:chs,unseen_CN:chs)."
+            "Optional comma-separated dataset->lang for per-language stats "
+            "(e.g. AISHELL-4:zh,unseen_CN:zh). Values are en/zh "
+            "(chs is accepted as an alias of zh). Unlisted datasets use "
+            "the shared map in dataset_lang.py."
         ),
     )
     parser.add_argument(
@@ -325,23 +329,6 @@ def resolve_existing_csv_path(
     return primary
 
 
-def parse_dataset_lang_overrides(raw: str) -> Dict[str, str]:
-    overrides: Dict[str, str] = {}
-    if not raw or not raw.strip():
-        return overrides
-    for item in raw.strip().split(","):
-        part = item.strip()
-        if not part or ":" not in part:
-            continue
-        dataset, lang = part.split(":", 1)
-        dataset, lang = dataset.strip(), lang.strip()
-        if lang not in {"en", "chs"}:
-            continue
-        if dataset:
-            overrides[dataset] = lang
-    return overrides
-
-
 def build_dataset_rows(
     output_dir: Path,
     dataset: str,
@@ -482,15 +469,25 @@ def summarize(
 def summarize_per_language(
     df: pd.DataFrame,
     dataset_lang_overrides: Dict[str, str],
-    default_lang: str,
     metrics: List[str],
 ) -> pd.DataFrame:
     df = df.copy()
-    df["_lang"] = df["dataset"].map(
-        lambda d: dataset_lang_overrides.get(d, default_lang)
-    )
+
+    def _lang_or_none(name: object) -> Optional[str]:
+        try:
+            return language_for_dataset(str(name), dataset_lang_overrides)
+        except KeyError:
+            return None
+
+    df["_lang"] = df["dataset"].map(_lang_or_none)
+    unknown = sorted(str(d) for d in df.loc[df["_lang"].isna(), "dataset"].unique())
+    if unknown:
+        print(
+            "[WARN] No language mapping; excluded from per-language summary: "
+            + ", ".join(unknown)
+        )
     per_lang = []
-    for lang in ["en", "chs"]:
+    for lang in ["en", "zh"]:
         group = df[df["_lang"] == lang]
         if len(group) == 0:
             continue
@@ -722,7 +719,7 @@ def run_one_output_dir(
         for k, v in result_full["status"].value_counts(dropna=False).to_dict().items()
     }
     per_lang_df = summarize_per_language(
-        result_full, dataset_lang_overrides, "en", metrics
+        result_full, dataset_lang_overrides, metrics
     )
 
     if not args.csv_only:
@@ -772,7 +769,7 @@ def run_regen_txt_only(
         str(k): int(v) for k, v in result_df["status"].value_counts(dropna=False).to_dict().items()
     }
     per_lang_df = summarize_per_language(
-        result_df, dataset_lang_overrides, "en", metrics
+        result_df, dataset_lang_overrides, metrics
     )
     write_summary_txt(
         output_txt, overall, per_dataset_df, per_lang_df, status_counts, metrics
@@ -788,7 +785,10 @@ def main() -> None:
         args.dnsmos_model_dir or __import__("os").environ.get("DNSMOS_MODEL_DIR", "./DNSMOS")
     ).resolve()
 
-    dataset_lang_overrides = parse_dataset_lang_overrides(args.dataset_lang_overrides)
+    try:
+        dataset_lang_overrides = parse_dataset_lang_overrides(args.dataset_lang_overrides)
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
 
     if args.regen_txt_only:
         for output_dir_raw in args.output_dir:
