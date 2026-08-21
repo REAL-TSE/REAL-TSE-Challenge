@@ -93,6 +93,7 @@ def normalizer_for_zh(transcript: str, option: Optional[str] = None) -> str:
     transcript = whisper_normalize(transcript, language="zh")
     transcript = _ZH_CONVERTER.convert(transcript)
     transcript = re.sub(r"\s+", "", transcript)
+    transcript = " ".join(transcript.strip())
     return transcript
 
 
