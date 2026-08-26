@@ -118,12 +118,11 @@ Evaluation requires:
 
 ### Recommended: One-command preparation via `pre.sh`
 
-Copy the released REAL-T split folders into `./datasets/`:
+Download [REAL-T](https://huggingface.co/datasets/REAL-TSE/REAL-T) into `./datasets/` (full commands, including a Hugging Face mirror, are in the Dataset subsection of the root README):
 
 ```bash
-cp -r /path/to/REAL-T-dev ./datasets/REAL-T-dev
-cp -r /path/to/REAL-T-eval1 ./datasets/REAL-T-eval1
-cp -r /path/to/REAL-T-eval2 ./datasets/REAL-T-eval2
+huggingface-cli download REAL-TSE/REAL-T --repo-type dataset --local-dir ./datasets
+# if huggingface.co is slow: export HF_ENDPOINT=https://hf-mirror.com
 ```
 
 Then run `pre.sh` to regenerate mappings and prepare the default model

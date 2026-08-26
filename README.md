@@ -104,7 +104,26 @@ when you switch to the optional `FireRedASR-AED-L` Chinese ASR backend.
 
 #### Dataset
 
-Copy the released REAL-T split folders into `./datasets/`:
+Download [REAL-T](https://huggingface.co/datasets/REAL-TSE/REAL-T) from Hugging Face into `./datasets/`. The dataset repo already contains `REAL-T-dev`, `REAL-T-eval1`, and `REAL-T-eval2` (~1.91 GB):
+
+```bash
+huggingface-cli download REAL-TSE/REAL-T \
+  --repo-type dataset \
+  --local-dir ./datasets
+```
+
+If `huggingface.co` is slow to reach, point the Hub client at a mirror first:
+
+```bash
+export HF_ENDPOINT=https://hf-mirror.com
+huggingface-cli download REAL-TSE/REAL-T \
+  --repo-type dataset \
+  --local-dir ./datasets
+```
+
+`hf download REAL-TSE/REAL-T --repo-type dataset --local-dir ./datasets` is equivalent. `huggingface-cli` / `hf` ship with `huggingface-hub`, which is already pinned in `requirements.txt`.
+
+If you already have the split folders locally, copy them instead:
 
 ```bash
 cp -r /path/to/REAL-T-dev ./datasets/REAL-T-dev
@@ -112,7 +131,7 @@ cp -r /path/to/REAL-T-eval1 ./datasets/REAL-T-eval1
 cp -r /path/to/REAL-T-eval2 ./datasets/REAL-T-eval2
 ```
 
-All scripts auto-detect datasets from the split directory.
+After the three split directories exist under `./datasets/`, run `pre.sh` (next subsection) to generate `mapping.csv`. All scripts auto-detect datasets from those split directories.
 
 #### One-Command Setup
 
@@ -332,16 +351,16 @@ We evaluate four BSRNN-based TSE models with different speaker information fusio
 
 ### 4.1 EVAL1
 
-EVAL1 split: AliMeeting, AMI, CHiME6, DipCo (1,980 samples).
+EVAL1 split: AliMeeting, AMI, CHiME6, DipCo (2,000 samples).
 
 <div align="center">
 
 | Model              | TER (zipformer-zh/en) | SIM (enrol-mixture) | SIM (enrol-tse) | DNSMOS SIG | DNSMOS BAK | DNSMOS OVRL | RATIO P | RATIO R | RATIO F1 |
 | ------------------ | --------------------- | ------------------- | --------------- | ---------- | ---------- | ----------- | ------- | ------- | -------- |
-| BSRNN_EMB          | 0.816                 | 0.529               | 0.507           | 2.50       | 2.18       | 1.91        | 0.788   | 0.906   | 0.827    |
-| BSRNN_EMB_CAUSAL   | 0.806                 | 0.529               | 0.500           | 2.29       | 2.07       | 1.78        | 0.788   | 0.867   | 0.807    |
-| BSRNN_TFMAP        | 0.837                 | 0.529               | 0.535           | 2.26       | 1.95       | 1.75        | 0.783   | 0.905   | 0.822    |
-| BSRNN_TFMAP_CAUSAL | 0.801                 | 0.529               | 0.553           | 2.33       | 1.97       | 1.79        | 0.789   | 0.921   | 0.837    |
+| BSRNN_EMB          | 0.709                 | 0.532               | 0.511           | 2.50       | 2.18       | 1.91        | 0.782   | 0.908   | 0.823    |
+| BSRNN_EMB_CAUSAL   | 0.725                 | 0.532               | 0.503           | 2.29       | 2.07       | 1.78        | 0.781   | 0.868   | 0.803    |
+| BSRNN_TFMAP        | 0.731                 | 0.531               | 0.539           | 2.27       | 1.95       | 1.75        | 0.777   | 0.908   | 0.819    |
+| BSRNN_TFMAP_CAUSAL | 0.688                 | 0.532               | 0.556           | 2.33       | 1.97       | 1.79        | 0.782   | 0.922   | 0.832    |
 
 </div>
 
@@ -353,10 +372,10 @@ EVAL2 split: unseen_CN, unseen_EN (3,000 samples).
 
 | Model              | TER (zipformer-zh/en) | SIM (enrol-mixture) | SIM (enrol-tse) | DNSMOS SIG | DNSMOS BAK | DNSMOS OVRL | RATIO P | RATIO R | RATIO F1 |
 | ------------------ | --------------------- | ------------------- | --------------- | ---------- | ---------- | ----------- | ------- | ------- | -------- |
-| BSRNN_EMB          | 0.838                 | 0.382               | 0.357           | 2.36       | 2.04       | 1.80        | 0.755   | 0.948   | 0.830    |
-| BSRNN_EMB_CAUSAL   | 0.811                 | 0.382               | 0.370           | 2.16       | 1.96       | 1.67        | 0.760   | 0.940   | 0.831    |
-| BSRNN_TFMAP        | 0.839                 | 0.382               | 0.382           | 1.94       | 1.68       | 1.52        | 0.750   | 0.961   | 0.833    |
-| BSRNN_TFMAP_CAUSAL | 0.808                 | 0.382               | 0.391           | 2.04       | 1.83       | 1.59        | 0.758   | 0.952   | 0.835    |
+| BSRNN_EMB          | 0.768                 | 0.382               | 0.357           | 2.36       | 2.05       | 1.80        | 0.755   | 0.948   | 0.830    |
+| BSRNN_EMB_CAUSAL   | 0.742                 | 0.382               | 0.370           | 2.16       | 1.96       | 1.67        | 0.760   | 0.940   | 0.831    |
+| BSRNN_TFMAP        | 0.769                 | 0.382               | 0.382           | 1.94       | 1.68       | 1.52        | 0.750   | 0.961   | 0.833    |
+| BSRNN_TFMAP_CAUSAL | 0.732                 | 0.382               | 0.390           | 2.04       | 1.83       | 1.59        | 0.757   | 0.952   | 0.834    |
 
 </div>
 
